@@ -7,6 +7,8 @@ signal skill_visual(from: Vector2, to: Vector2, color: Color)
 
 enum Role { ASSAULT, DAMAGE, TECH }
 
+const UI_FONT := preload("res://fonts/AstaSans-SemiBold.ttf")
+
 @export var role: Role = Role.ASSAULT
 @export var display_name: String = "바둑이"
 @export var move_speed: float = 105.0
@@ -187,7 +189,7 @@ func _update_sprite_motion(delta: float, is_moving: bool, is_attacking: bool) ->
 
 
 func _draw() -> void:
-	draw_string(ThemeDB.fallback_font, Vector2(-37, -113), display_name, HORIZONTAL_ALIGNMENT_CENTER, 74, 14, Color.WHITE)
+	draw_string(UI_FONT, Vector2(-37, -113), display_name, HORIZONTAL_ALIGNMENT_CENTER, 74, 14, Color.WHITE)
 	var bar_width := 68.0
 	draw_rect(Rect2(-bar_width / 2.0, -106.0, bar_width, 5.0), Color("#452e35"))
 	draw_rect(Rect2(-bar_width / 2.0, -106.0, bar_width * health.ratio(), 5.0), Color("#68d391"))

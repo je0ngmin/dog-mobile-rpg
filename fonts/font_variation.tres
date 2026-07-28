@@ -1,3 +1,6 @@
-[gd_resource type="FontVariation" format=3 uid="uid://b5uia6v4r5uu8"]
+[gd_resource type="FontVariation" load_steps=2 format=3 uid="uid://b5uia6v4r5uu8"]
+
+[ext_resource type="FontFile" path="res://fonts/AstaSans-SemiBold.ttf" id="1_astasans"]
 
 [resource]
+base_font = ExtResource("1_astasans")
