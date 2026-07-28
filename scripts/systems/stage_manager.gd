@@ -163,7 +163,7 @@ func _on_dog_defeated(_dog: DogActor) -> void:
 		boss_battle_ended.emit()
 	_clear_enemies()
 	party_defeated.emit()
-	combat_message.emit("원정대 전멸. 골드를 사용해 모두 부활할 수 있습니다.")
+	combat_message.emit("원정대가 전멸했다...")
 
 
 func _all_dogs_defeated() -> bool:

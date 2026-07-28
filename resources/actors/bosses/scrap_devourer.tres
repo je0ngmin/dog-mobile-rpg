@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_definition")
 actor_id = &"scrap_devourer"
-display_name = "고철 포식자"
+display_name = "폐허 포식자"
 texture = ExtResource("2_texture")
 body_color = Color(0.709804, 0.294118, 0.333333, 1)
 base_health = 300000.0

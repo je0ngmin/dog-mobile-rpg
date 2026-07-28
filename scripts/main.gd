@@ -160,6 +160,7 @@ func _spawn_character(character_index: int) -> void:
 		spawn_origin = leader.global_position
 	dog.global_position = spawn_origin + FORMATION_OFFSETS[character_index]
 	dog.apply_progression(GameState.player_level, GameState.character_levels[character_index])
+	dog.apply_defense_bonus(GameState.defense_skill_total_percent())
 	dog.attack_visual.connect(world.add_combat_line)
 	dog.skill_visual.connect(world.add_combat_line)
 	party.append(dog)
@@ -687,7 +688,7 @@ func _rebuild_skill_rows() -> void:
 	for child in skill_rows.get_children():
 		skill_rows.remove_child(child)
 		child.queue_free()
-	for skill_index in 2:
+	for skill_index in GameState.account_skill_levels.size():
 		var row := PanelContainer.new()
 		var row_style := StyleBoxFlat.new()
 		row_style.bg_color = Color("#132329")
@@ -708,20 +709,27 @@ func _rebuild_skill_rows() -> void:
 		description.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		description.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		var level: int = GameState.account_skill_levels[skill_index]
-		if skill_index == 0:
-			description.text = "골드 증가  Lv.%d\n몬스터 처치 골드 +%.2f%%\n다음 레벨 증가폭 +%.3f%%" % [
-				level,
-				GameState.gold_skill_total_percent(),
-				GameState.gold_skill_next_increment(),
-			]
-		else:
-			description.text = "긴급 체력 회복  Lv.%d\nHP 5%% 이하 시 %.1f%% 회복 · 쿨타임 %.1f초\n다음: 회복 +%.2f%% · 쿨타임 -%.2f초" % [
-				level,
-				GameState.healing_skill_recovery_percent(),
-				GameState.healing_skill_cooldown(),
-				GameState.healing_skill_next_increment(),
-				GameState.healing_skill_next_cooldown_reduction(),
-			]
+		match skill_index:
+			0:
+				description.text = "골드 증가  Lv.%d\n몬스터 처치 골드 +%.2f%%\n다음 레벨 증가폭 +%.3f%%" % [
+					level,
+					GameState.gold_skill_total_percent(),
+					GameState.gold_skill_next_increment(),
+				]
+			1:
+				description.text = "긴급 체력 회복  Lv.%d\nHP 5%% 이하 시 %.1f%% 회복 · 쿨타임 %.1f초\n다음: 회복 +%.2f%% · 쿨타임 -%.2f초" % [
+					level,
+					GameState.healing_skill_recovery_percent(),
+					GameState.healing_skill_cooldown(),
+					GameState.healing_skill_next_increment(),
+					GameState.healing_skill_next_cooldown_reduction(),
+				]
+			2:
+				description.text = "방어력 증가  Lv.%d\n모든 캐릭터가 받는 피해 -%.2f%%\n다음 레벨 피해 감소 +%.3f%%" % [
+					level,
+					GameState.defense_skill_total_percent(),
+					GameState.defense_skill_next_increment(),
+				]
 		var upgrade := Button.new()
 		upgrade.custom_minimum_size = Vector2(160.0, 54.0)
 		var cost: int = GameState.account_skill_upgrade_cost(skill_index)
@@ -736,7 +744,8 @@ func _rebuild_skill_rows() -> void:
 func _on_skill_upgrade(skill_index: int) -> void:
 	if not GameState.upgrade_account_skill(skill_index):
 		return
-	var skill_name := "골드 증가" if skill_index == 0 else "긴급 체력 회복"
+	var skill_names := ["골드 증가", "긴급 체력 회복", "방어력 증가"]
+	var skill_name: String = skill_names[skill_index]
 	_show_message("%s Lv.%d 강화 완료!" % [
 		skill_name,
 		GameState.account_skill_levels[skill_index],
@@ -752,6 +761,9 @@ func _on_account_skills_changed(_skill_index: int) -> void:
 		_healing_skill_cooldown_remaining,
 		GameState.healing_skill_cooldown()
 	)
+	for dog in party:
+		if is_instance_valid(dog):
+			dog.apply_defense_bonus(GameState.defense_skill_total_percent())
 	_rebuild_skill_rows()
 
 
@@ -844,11 +856,9 @@ func _stop_message_text_effect() -> void:
 
 func _show_offline_reward(reward: Dictionary) -> void:
 	var hours := float(reward.get("seconds", 0)) / 3600.0
-	offline_label.text = "%.1f시간 원정 보상\n골드 +%s  식량 +%d  고철 +%d  EXP +%d" % [
+	offline_label.text = "%.1f시간 원정 보상\n골드 +%s  EXP +%d" % [
 		hours,
 		GameState.format_large_number(int(reward.get("gold", 0))),
-		int(reward.get("food", 0)),
-		int(reward.get("scrap", 0)),
 		int(reward.get("experience", 0)),
 	]
 	offline_panel.show()

@@ -65,7 +65,18 @@ func _ready() -> void:
 		and resource_enemy.display_name == "화염 까마귀",
 		"보스가 스테이지별 ActorDefinition을 사용해야 합니다."
 	)
-	resource_enemy.queue_free()
+	var enemy_loot_events: Array[Dictionary] = []
+	resource_enemy.defeated.connect(
+		func(_enemy: EnemyActor, loot: Dictionary) -> void:
+			enemy_loot_events.append(loot)
+	)
+	resource_enemy.health.take_damage(resource_enemy.health.maximum_health * 2.0)
+	_check(
+		enemy_loot_events.size() == 1
+		and not enemy_loot_events[0].has("food")
+		and not enemy_loot_events[0].has("scrap"),
+		"몬스터 보상에서 식량과 고철이 제거되어야 합니다."
+	)
 	_check(main.world.format_damage_number(9999.0) == "9,999", "1만 미만 데미지는 천 단위 쉼표로 표시해야 합니다.")
 	_check(main.world.format_damage_number(12_000.0) == "1.2만", "큰 데미지는 만 단위로 축약해야 합니다.")
 	_check(main.world.format_damage_number(100_000_000.0) == "1억", "더 큰 데미지는 억 단위로 축약해야 합니다.")
@@ -179,16 +190,47 @@ func _ready() -> void:
 	var healing_cooldown_before := GameState.healing_skill_cooldown()
 	_check(GameState.upgrade_account_skill(1), "긴급 회복 스킬을 강화할 수 있어야 합니다.")
 	_check(GameState.healing_skill_cooldown() < healing_cooldown_before, "회복 스킬 강화 시 쿨타임이 감소해야 합니다.")
+	var defense_increment_before := GameState.defense_skill_next_increment()
+	_check(GameState.upgrade_account_skill(2), "방어력 증가 스킬을 강화할 수 있어야 합니다.")
+	_check(GameState.defense_skill_next_increment() < defense_increment_before, "방어력 스킬의 레벨별 증가폭은 감소해야 합니다.")
+	main._rebuild_skill_rows()
+	_check(main.skill_rows.get_child_count() == 3, "공용 스킬 화면에 방어력 증가를 포함한 스킬 3개가 표시되어야 합니다.")
+	var defense_row_text := str(main.skill_rows.get_child(2).get_child(0).get_child(0).get_child(0).text)
+	_check(defense_row_text.contains("방어력 증가"), "세 번째 스킬 카드에 방어력 증가 정보가 표시되어야 합니다.")
+	main._show_offline_reward({
+		"seconds": 3600,
+		"gold": 120_000,
+		"experience": 10,
+		"food": 999,
+		"scrap": 999,
+	})
+	_check(
+		not main.offline_label.text.contains("식량")
+		and not main.offline_label.text.contains("고철"),
+		"오프라인 보상 UI에서 식량과 고철이 제거되어야 합니다."
+	)
+	main.offline_panel.hide()
 
 	var survivor: DogActor = main.party[0]
 	var defeated: DogActor = main.party[1]
-	survivor.health.take_damage(survivor.health.maximum_health * 0.96)
+	var defense_percent := GameState.defense_skill_total_percent()
+	var health_before_defense_test := survivor.health.current_health
+	survivor.health.take_damage(10_000.0)
+	_check(
+		is_equal_approx(
+			health_before_defense_test - survivor.health.current_health,
+			10_000.0 * (1.0 - defense_percent / 100.0)
+		),
+		"방어력 증가 수치만큼 플레이어가 받는 실제 피해가 감소해야 합니다."
+	)
+	survivor.health.restore_full()
+	survivor.health.take_damage(survivor.health.maximum_health * 0.97)
 	main._update_healing_skill(0.0)
 	_check(survivor.health.ratio() > 0.04, "HP 5% 이하에서 긴급 회복이 자동 발동해야 합니다.")
 	_check(main._healing_skill_cooldown_remaining > 0.0, "긴급 회복 발동 후 공용 쿨타임이 시작되어야 합니다.")
 	survivor.health.restore_full()
 	survivor.health.take_damage(30.0)
-	defeated.health.take_damage(defeated.health.maximum_health)
+	defeated.health.take_damage(defeated.health.maximum_health * 2.0)
 	_check(
 		main.party_speech_bubble.current_state == 1,
 		"동료 한 명이 쓰러지면 팀원 사망 대사를 표시해야 합니다. 현재 상태: %s" % main.party_speech_bubble.current_state
@@ -199,7 +241,7 @@ func _ready() -> void:
 
 	var gold_before_revival: int = GameState.gold
 	var expected_penalty := ceili(float(gold_before_revival) * 0.3)
-	survivor.health.take_damage(survivor.health.maximum_health)
+	survivor.health.take_damage(survivor.health.maximum_health * 2.0)
 	_check(main.stage_manager.progression_paused, "전멸 시 전투 진행이 멈춰야 합니다.")
 	_check(main.get_node_or_null("UI/RetryButton") == null, "전멸 시 수동 부활 버튼이 존재하면 안 됩니다.")
 	_check(GameState.gold == gold_before_revival - expected_penalty, "전멸 즉시 현재 골드의 30%가 차감되어야 합니다.")

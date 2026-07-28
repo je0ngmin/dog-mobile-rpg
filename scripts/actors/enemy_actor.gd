@@ -122,8 +122,6 @@ func _on_died() -> void:
 		"gold": final_gold,
 		"base_gold": base_gold,
 		"gold_skill_bonus": final_gold - base_gold,
-		"food": (2 + stage_number / 2) * (5 if is_boss else 1),
-		"scrap": (1 + stage_number / 3) * (5 if is_boss else 1),
 		"parts": 1 if is_boss else 0,
 		"experience": (6 + stage_number) * (5 if is_boss else 1),
 	}

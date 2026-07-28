@@ -97,6 +97,10 @@ func apply_progression(account_level: int, upgrade_level: int) -> void:
 	_apply_role_stats(multiplier, character_level, true)
 
 
+func apply_defense_bonus(damage_reduction_percent: float) -> void:
+	health.damage_reduction_percent = clampf(damage_reduction_percent, 0.0, 45.0)
+
+
 func revive(at_position: Vector2) -> void:
 	global_position = at_position
 	visible = true

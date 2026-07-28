@@ -12,8 +12,6 @@ const MAX_GOLD := 8_000_000_000_000_000_000
 const LARGE_NUMBER_UNITS := ["", "만", "억", "조", "경"]
 
 var gold: int = 0
-var food: int = 0
-var scrap: int = 0
 var parts: int = 0
 var player_level: int = 1
 var experience: int = 0
@@ -22,7 +20,7 @@ var last_saved_unix: int = 0
 var pending_offline_reward: Dictionary = {}
 var character_purchased: Array[bool] = [true, false, false]
 var character_levels: Array[int] = [1, 1, 1]
-var account_skill_levels: Array[int] = [1, 1]
+var account_skill_levels: Array[int] = [1, 1, 1]
 
 
 func _ready() -> void:
@@ -45,8 +43,6 @@ func add_experience(amount: int) -> void:
 
 func add_loot(loot: Dictionary) -> void:
 	gold = mini(gold + int(loot.get("gold", 0)), MAX_GOLD)
-	food += int(loot.get("food", 0))
-	scrap += int(loot.get("scrap", 0))
 	parts += int(loot.get("parts", 0))
 	add_experience(int(loot.get("experience", 0)))
 	resources_changed.emit()
@@ -144,7 +140,7 @@ func upgrade_character(character_index: int) -> bool:
 func account_skill_upgrade_cost(skill_index: int) -> int:
 	if skill_index < 0 or skill_index >= account_skill_levels.size():
 		return 0
-	var base_costs := [2_000_000, 2_600_000]
+	var base_costs := [2_000_000, 2_600_000, 3_200_000]
 	var cost := float(base_costs[skill_index]) * pow(1.65, account_skill_levels[skill_index] - 1)
 	return int(round(minf(cost, float(MAX_GOLD))))
 
@@ -202,6 +198,19 @@ func healing_skill_next_cooldown_reduction() -> float:
 	return 1.5 / sqrt(float(account_skill_levels[1]))
 
 
+func defense_skill_total_percent() -> float:
+	var total := 0.0
+	for level in range(1, account_skill_levels[2] + 1):
+		total += 0.8 / sqrt(float(level))
+	return minf(total, 45.0)
+
+
+func defense_skill_next_increment() -> float:
+	if defense_skill_total_percent() >= 45.0:
+		return 0.0
+	return minf(0.8 / sqrt(float(account_skill_levels[2] + 1)), 45.0 - defense_skill_total_percent())
+
+
 func unlock_stage(stage_number: int) -> void:
 	highest_stage = maxi(highest_stage, stage_number)
 	save_game()
@@ -211,8 +220,6 @@ func save_game() -> void:
 	last_saved_unix = int(Time.get_unix_time_from_system())
 	var data := {
 		"gold": gold,
-		"food": food,
-		"scrap": scrap,
 		"parts": parts,
 		"player_level": player_level,
 		"experience": experience,
@@ -239,8 +246,6 @@ func load_game() -> void:
 		return
 	var data: Dictionary = parsed
 	gold = int(data.get("gold", 0))
-	food = int(data.get("food", 0))
-	scrap = int(data.get("scrap", 0))
 	parts = int(data.get("parts", 0))
 	player_level = int(data.get("player_level", 1))
 	experience = int(data.get("experience", 0))
@@ -252,7 +257,7 @@ func load_game() -> void:
 		character_purchased[index] = bool(saved_purchased[index]) if index < saved_purchased.size() else index == 0
 		character_levels[index] = maxi(int(saved_levels[index]), 1) if index < saved_levels.size() else 1
 	character_purchased[0] = true
-	var saved_skill_levels: Array = data.get("account_skill_levels", [1, 1])
+	var saved_skill_levels: Array = data.get("account_skill_levels", [1, 1, 1])
 	for index in account_skill_levels.size():
 		account_skill_levels[index] = maxi(int(saved_skill_levels[index]), 1) if index < saved_skill_levels.size() else 1
 
@@ -272,8 +277,6 @@ func _grant_offline_reward() -> void:
 	var reward := {
 		"seconds": elapsed,
 		"gold": int(offline_gold),
-		"food": int(minutes * 3 * stage_multiplier),
-		"scrap": int(minutes * 2 * stage_multiplier),
 		"experience": int(minutes * 4 * stage_multiplier),
 	}
 	add_loot(reward)
@@ -289,14 +292,12 @@ func consume_offline_reward() -> Dictionary:
 
 func reset_progress() -> void:
 	gold = 0
-	food = 0
-	scrap = 0
 	parts = 0
 	player_level = 1
 	experience = 0
 	highest_stage = 1
 	character_purchased = [true, false, false]
 	character_levels = [1, 1, 1]
-	account_skill_levels = [1, 1]
+	account_skill_levels = [1, 1, 1]
 	save_game()
 	resources_changed.emit()

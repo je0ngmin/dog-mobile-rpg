@@ -7,6 +7,7 @@ signal died
 signal health_changed(current: float, maximum: float)
 
 @export var maximum_health: float = 100.0
+@export_range(0.0, 90.0, 0.1) var damage_reduction_percent: float = 0.0
 var current_health: float
 var is_dead: bool = false
 
@@ -25,7 +26,8 @@ func configure(value: float) -> void:
 func take_damage(amount: float) -> void:
 	if is_dead:
 		return
-	var applied := maxf(amount, 0.0)
+	var reduction_multiplier := 1.0 - clampf(damage_reduction_percent, 0.0, 90.0) / 100.0
+	var applied := maxf(amount, 0.0) * reduction_multiplier
 	current_health = maxf(current_health - applied, 0.0)
 	damaged.emit(applied)
 	health_changed.emit(current_health, maximum_health)
