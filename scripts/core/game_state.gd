@@ -4,6 +4,7 @@ signal resources_changed
 signal level_changed(level: int)
 signal offline_reward_ready(reward: Dictionary)
 signal character_roster_changed(character_index: int)
+signal account_skills_changed(skill_index: int)
 
 const SAVE_PATH := "user://dog_rpg_save.json"
 const OFFLINE_CAP_SECONDS := 8 * 60 * 60
@@ -21,6 +22,7 @@ var last_saved_unix: int = 0
 var pending_offline_reward: Dictionary = {}
 var character_purchased: Array[bool] = [true, false, false]
 var character_levels: Array[int] = [1, 1, 1]
+var account_skill_levels: Array[int] = [1, 1]
 
 
 func _ready() -> void:
@@ -139,6 +141,67 @@ func upgrade_character(character_index: int) -> bool:
 	return true
 
 
+func account_skill_upgrade_cost(skill_index: int) -> int:
+	if skill_index < 0 or skill_index >= account_skill_levels.size():
+		return 0
+	var base_costs := [2000, 2600]
+	var cost := float(base_costs[skill_index]) * pow(1.65, account_skill_levels[skill_index] - 1)
+	return int(round(minf(cost, float(MAX_GOLD))))
+
+
+func upgrade_account_skill(skill_index: int) -> bool:
+	if skill_index < 0 or skill_index >= account_skill_levels.size():
+		return false
+	if not spend_gold(account_skill_upgrade_cost(skill_index)):
+		return false
+	account_skill_levels[skill_index] += 1
+	account_skills_changed.emit(skill_index)
+	save_game()
+	return true
+
+
+func gold_skill_total_percent() -> float:
+	var total := 0.0
+	for level in range(1, account_skill_levels[0] + 1):
+		total += 0.25 / sqrt(float(level))
+	return total
+
+
+func gold_skill_next_increment() -> float:
+	return 0.25 / sqrt(float(account_skill_levels[0] + 1))
+
+
+func apply_monster_gold_bonus(base_gold: int) -> int:
+	if base_gold <= 0:
+		return 0
+	var bonus := maxi(int(round(base_gold * gold_skill_total_percent() / 100.0)), 1)
+	return mini(base_gold + bonus, MAX_GOLD)
+
+
+func healing_skill_recovery_percent() -> float:
+	var recovery := 6.0
+	for level in range(2, account_skill_levels[1] + 1):
+		recovery += 0.8 / sqrt(float(level - 1))
+	return recovery
+
+
+func healing_skill_next_increment() -> float:
+	return 0.8 / sqrt(float(account_skill_levels[1]))
+
+
+func healing_skill_cooldown() -> float:
+	var cooldown := 60.0
+	for level in range(2, account_skill_levels[1] + 1):
+		cooldown -= 1.5 / sqrt(float(level - 1))
+	return maxf(cooldown, 25.0)
+
+
+func healing_skill_next_cooldown_reduction() -> float:
+	if healing_skill_cooldown() <= 25.0:
+		return 0.0
+	return 1.5 / sqrt(float(account_skill_levels[1]))
+
+
 func unlock_stage(stage_number: int) -> void:
 	highest_stage = maxi(highest_stage, stage_number)
 	save_game()
@@ -157,6 +220,7 @@ func save_game() -> void:
 		"last_saved_unix": last_saved_unix,
 		"character_purchased": character_purchased,
 		"character_levels": character_levels,
+		"account_skill_levels": account_skill_levels,
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
@@ -188,6 +252,9 @@ func load_game() -> void:
 		character_purchased[index] = bool(saved_purchased[index]) if index < saved_purchased.size() else index == 0
 		character_levels[index] = maxi(int(saved_levels[index]), 1) if index < saved_levels.size() else 1
 	character_purchased[0] = true
+	var saved_skill_levels: Array = data.get("account_skill_levels", [1, 1])
+	for index in account_skill_levels.size():
+		account_skill_levels[index] = maxi(int(saved_skill_levels[index]), 1) if index < saved_skill_levels.size() else 1
 
 
 func _grant_offline_reward() -> void:
@@ -230,5 +297,6 @@ func reset_progress() -> void:
 	highest_stage = 1
 	character_purchased = [true, false, false]
 	character_levels = [1, 1, 1]
+	account_skill_levels = [1, 1]
 	save_game()
 	resources_changed.emit()

@@ -8,12 +8,55 @@
 [ext_resource type="FontVariation" uid="uid://b5uia6v4r5uu8" path="res://fonts/font_variation.tres" id="6_tefeu"]
 [ext_resource type="Texture2D" uid="uid://liwdi1k4qons" path="res://sprites/backgrounds/BG001.png" id="7_bg001"]
 [ext_resource type="Texture2D" uid="uid://bmy17gavb8m28" path="res://sprites/gold.png" id="7_tipki"]
+[ext_resource type="FontVariation" uid="uid://lditlvokrwg1" path="res://fonts/font_gold.tres" id="8_choun"]
+[ext_resource type="Texture2D" uid="uid://l0thkq55rrnt" path="res://sprites/dogs/dog001.png" id="8_dog_icon"]
+
+[sub_resource type="Shader" id="Shader_boss_atmosphere"]
+code = "shader_type canvas_item;
+
+uniform float intensity : hint_range(0.0, 1.0) = 0.0;
+
+void fragment() {
+	vec2 centered = UV - vec2(0.5);
+	centered.x *= 1.78;
+	float distance_from_center = length(centered);
+	float vignette = smoothstep(0.28, 0.88, distance_from_center);
+	vec3 center_tint = vec3(0.24, 0.015, 0.02);
+	vec3 edge_tint = vec3(0.015, 0.0, 0.005);
+	vec3 tint = mix(center_tint, edge_tint, vignette);
+	float alpha = intensity * (0.13 + vignette * 0.62);
+	COLOR = vec4(tint, alpha);
+}"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_boss_atmosphere"]
+shader = SubResource("Shader_boss_atmosphere")
+shader_parameter/intensity = 0.0
+
+[sub_resource type="Shader" id="Shader_stage_transition"]
+code = "shader_type canvas_item;
+
+uniform float progress : hint_range(0.0, 1.0) = 0.0;
+uniform float uncover : hint_range(0.0, 1.0) = 0.0;
+uniform float softness : hint_range(0.01, 0.3) = 0.12;
+
+void fragment() {
+	float front = 1.0 + softness - progress * (1.0 + softness * 2.0);
+	float covered = smoothstep(front - softness, front + softness, UV.x);
+	float alpha = mix(covered, 1.0 - covered, uncover);
+	COLOR = vec4(0.0, 0.0, 0.0, alpha);
+}"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_stage_transition"]
+shader = SubResource("Shader_stage_transition")
+shader_parameter/progress = 0.0
+shader_parameter/uncover = 0.0
+shader_parameter/softness = 0.12
 
 [sub_resource type="StyleBoxFlat" id="StyleTop"]
 bg_color = Color(0.047058824, 0.07450981, 0.09019608, 0)
 
 [sub_resource type="LabelSettings" id="LabelSettings_ci2d0"]
-font = ExtResource("6_tefeu")
+font = ExtResource("8_choun")
 font_size = 24
 font_color = Color(1, 0.972549, 0.023529412, 1)
 outline_size = 2
@@ -51,11 +94,45 @@ outline_size = 2
 outline_color = Color(0, 0, 0, 1)
 shadow_color = Color(0, 0, 0, 1)
 
-[sub_resource type="LabelSettings" id="LabelSettings_ljo1c"]
-font = ExtResource("6_tefeu")
-font_size = 20
-outline_size = 1
-outline_color = Color(0.11825981, 0.12500325, 0.15014526, 1)
+[sub_resource type="StyleBoxFlat" id="StyleMenuButton"]
+bg_color = Color(0.055, 0.11, 0.13, 0.97)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.82, 0.56, 0.2, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0, 0, 0.55)
+shadow_size = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleMenuButtonPressed"]
+bg_color = Color(0.12, 0.09, 0.045, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.68, 0.18, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleMenuButtonHover"]
+bg_color = Color(0.09, 0.19, 0.21, 0.98)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 0.76, 0.3, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0, 0, 0.65)
+shadow_size = 7
 
 [sub_resource type="StyleBoxFlat" id="StylePanel"]
 bg_color = Color(0.055, 0.09, 0.11, 0.98)
@@ -89,12 +166,38 @@ texture = ExtResource("7_bg001")
 [node name="StageManager" type="Node" parent="." unique_id=345441494]
 script = ExtResource("3")
 
-[node name="GoldEffects" type="CanvasLayer" parent="."]
+[node name="GoldEffects" type="CanvasLayer" parent="." unique_id=312137500]
 layer = 5
 
-[node name="Coins" type="Node2D" parent="GoldEffects"]
+[node name="Coins" type="Node2D" parent="GoldEffects" unique_id=1838159513]
+
+[node name="BossAtmosphere" type="CanvasLayer" parent="." unique_id=1827182926]
+layer = 0
+
+[node name="Overlay" type="ColorRect" parent="BossAtmosphere" unique_id=1551842122]
+visible = false
+material = SubResource("ShaderMaterial_boss_atmosphere")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="StageTransition" type="CanvasLayer" parent="." unique_id=1745026635]
+
+[node name="Overlay" type="ColorRect" parent="StageTransition" unique_id=138474593]
+visible = false
+material = SubResource("ShaderMaterial_stage_transition")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=444187947]
+layer = 10
 
 [node name="TopBar" type="PanelContainer" parent="UI" unique_id=1188668395]
 offset_right = 1152.0
@@ -199,23 +302,31 @@ text = "모두 부활"
 
 [node name="CharacterButton" type="Button" parent="UI" unique_id=1763436075]
 offset_left = 28.0
-offset_top = 528.0
-offset_right = 208.0
-offset_bottom = 584.0
+offset_top = 516.0
+offset_right = 218.0
+offset_bottom = 590.0
 theme_override_fonts/font = ExtResource("6_tefeu")
 theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleMenuButton")
+theme_override_styles/pressed = SubResource("StyleMenuButtonPressed")
+theme_override_styles/hover = SubResource("StyleMenuButtonHover")
 text = "캐릭터"
+icon = ExtResource("8_dog_icon")
+expand_icon = true
 
-[node name="BottomHint" type="Label" parent="UI" unique_id=698818789]
-offset_left = 26.0
-offset_top = 602.0
-offset_right = 1126.0
-offset_bottom = 632.0
-theme_override_colors/font_color = Color(0.68, 0.74, 0.75, 1)
-theme_override_font_sizes/font_size = 15
-text = "자동 원정 진행 중  ·  이동 / 공격 / 스킬 자동  ·  전멸 시 골드로 부활  ·  최대 오프라인 보상 8시간"
-label_settings = SubResource("LabelSettings_ljo1c")
-horizontal_alignment = 1
+[node name="SkillButton" type="Button" parent="UI" unique_id=1690446532]
+offset_left = 230.0
+offset_top = 516.0
+offset_right = 430.0
+offset_bottom = 590.0
+theme_override_fonts/font = ExtResource("6_tefeu")
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleMenuButton")
+theme_override_styles/pressed = SubResource("StyleMenuButtonPressed")
+theme_override_styles/hover = SubResource("StyleMenuButtonHover")
+text = "공용 스킬"
+icon = ExtResource("7_tipki")
+expand_icon = true
 
 [node name="CharacterPanel" type="PanelContainer" parent="UI" unique_id=495756893]
 visible = false
@@ -249,12 +360,59 @@ theme_override_colors/font_color = Color(0.67, 0.78, 0.79, 1)
 text = "새 동료를 구매하거나 보유 캐릭터의 핵심 속성을 강화합니다."
 horizontal_alignment = 1
 
-[node name="CharacterRows" type="VBoxContainer" parent="UI/CharacterPanel/Margin/VBox" unique_id=1572122516]
+[node name="CharacterScroll" type="ScrollContainer" parent="UI/CharacterPanel/Margin/VBox" unique_id=804371721]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 4
+vertical_scroll_mode = 0
+
+[node name="CharacterCards" type="HBoxContainer" parent="UI/CharacterPanel/Margin/VBox/CharacterScroll" unique_id=536173601]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 14
 
 [node name="Close" type="Button" parent="UI/CharacterPanel/Margin/VBox" unique_id=1830588873]
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+text = "닫기"
+
+[node name="SkillPanel" type="PanelContainer" parent="UI" unique_id=1284340309]
+visible = false
+offset_left = 276.0
+offset_top = 112.0
+offset_right = 876.0
+offset_bottom = 548.0
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="Margin" type="MarginContainer" parent="UI/SkillPanel" unique_id=1214165019]
+layout_mode = 2
+theme_override_constants/margin_left = 30
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 30
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="UI/SkillPanel/Margin" unique_id=1518213469]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="UI/SkillPanel/Margin/VBox" unique_id=194932761]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.79, 0.36, 1)
+theme_override_font_sizes/font_size = 25
+text = "계정 공용 스킬"
+horizontal_alignment = 1
+
+[node name="Description" type="Label" parent="UI/SkillPanel/Margin/VBox" unique_id=396646519]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.67, 0.78, 0.79, 1)
+text = "모든 캐릭터에게 상시 적용되며 레벨이 높을수록 증가폭이 감소합니다."
+horizontal_alignment = 1
+
+[node name="SkillRows" type="VBoxContainer" parent="UI/SkillPanel/Margin/VBox" unique_id=1218949884]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="Close" type="Button" parent="UI/SkillPanel/Margin/VBox" unique_id=1799298677]
 custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
 text = "닫기"

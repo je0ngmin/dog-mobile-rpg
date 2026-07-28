@@ -7,6 +7,8 @@ signal boss_warning
 signal boss_battle_ended
 signal boss_attacked
 signal gold_dropped(world_position: Vector2, amount: int, is_boss_drop: bool)
+signal reward_logged(gold_amount: int, experience_amount: int, skill_bonus_gold: int)
+signal stage_transition_requested(next_stage: int)
 signal party_defeated
 signal combat_message(text: String)
 
@@ -22,6 +24,7 @@ var _spawn_timer: float = 0.5
 var _party: Array[DogActor] = []
 var _leader: DogActor
 var _world: Node2D
+var _pending_stage: int = 0
 
 
 func setup(world: Node2D, party: Array[DogActor], starting_stage: int) -> void:
@@ -83,6 +86,20 @@ func restart_after_revival() -> bool:
 	return true
 
 
+func complete_stage_transition() -> void:
+	if _pending_stage <= current_stage:
+		return
+	current_stage = _pending_stage
+	_pending_stage = 0
+	kills = 0
+	progression_paused = false
+	_spawn_timer = 0.8
+	GameState.unlock_stage(current_stage)
+	stage_changed.emit(current_stage)
+	progress_changed.emit(kills, enemies_before_boss, boss_active)
+	## combat_message.emit("새로운 구역 진입! 스테이지 %d" % current_stage)
+
+
 func _spawn_enemy(as_boss: bool) -> void:
 	if enemy_scene == null:
 		return
@@ -107,15 +124,19 @@ func _on_enemy_defeated(enemy: EnemyActor, loot: Dictionary) -> void:
 	var defeated_position := enemy.global_position
 	GameState.add_loot(loot)
 	gold_dropped.emit(defeated_position, int(loot.get("gold", 0)), enemy.is_boss)
+	reward_logged.emit(
+		int(loot.get("gold", 0)),
+		int(loot.get("experience", 0)),
+		int(loot.get("gold_skill_bonus", 0))
+	)
 	if enemy.is_boss:
 		_heal_surviving_party()
 		boss_active = false
 		boss_battle_ended.emit()
-		current_stage += 1
-		kills = 0
-		GameState.unlock_stage(current_stage)
-		stage_changed.emit(current_stage)
-		combat_message.emit("보스를 격파했다! 스테이지 %d 해금" % current_stage)
+		progression_paused = true
+		_pending_stage = current_stage + 1
+		stage_transition_requested.emit(_pending_stage)
+		combat_message.emit("보스를 격파했다! 다음 구역으로 이동합니다.")
 	else:
 		kills += 1
 	progress_changed.emit(kills, enemies_before_boss, boss_active)

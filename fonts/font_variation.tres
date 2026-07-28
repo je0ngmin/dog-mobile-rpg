@@ -1,6 +1,3 @@
 [gd_resource type="FontVariation" format=3 uid="uid://b5uia6v4r5uu8"]
 
-[ext_resource type="FontFile" uid="uid://7oqfbwlfr1lt" path="res://fonts/AstaSans-Medium.ttf" id="1_ci2d0"]
-
 [resource]
-base_font = ExtResource("1_ci2d0")

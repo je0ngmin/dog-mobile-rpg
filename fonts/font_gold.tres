@@ -1,0 +1,9 @@
+[gd_resource type="FontVariation" format=3 uid="uid://lditlvokrwg1"]
+
+[ext_resource type="FontFile" uid="uid://ctpv73no7s0sw" path="res://fonts/AstaSans-Bold.ttf" id="1_037eg"]
+
+[resource]
+base_font = ExtResource("1_037eg")
+opentype_features = {
+1953396077: 1
+}

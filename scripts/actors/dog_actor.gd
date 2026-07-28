@@ -85,7 +85,7 @@ func set_character_texture(texture: Texture2D) -> void:
 
 func apply_progression(account_level: int, upgrade_level: int) -> void:
 	character_level = maxi(upgrade_level, 1)
-	var multiplier := 1.0 + float(account_level - 1) * 0.08
+	var multiplier := 1.0 + float(account_level - 1) * 0.02
 	_apply_role_stats(multiplier, character_level, true)
 
 
@@ -107,14 +107,14 @@ func _apply_role_stats(multiplier: float = 1.0, upgrade_level: int = 1, preserve
 	match role:
 		Role.ASSAULT:
 			_body_color = Color("#d9904f")
-			health.configure(180.0 * multiplier * pow(1.12, upgrade_count))
+			health.configure(180.0 * multiplier * pow(1.015, upgrade_count))
 			attack.configure(14.0 * multiplier, 1.1, 92.0)
 			skill.skill_name = "방패 돌진"
 			skill.damage_multiplier = 2.2
 		Role.DAMAGE:
 			_body_color = Color("#f0c15d")
 			health.configure(105.0 * multiplier)
-			attack.configure(22.0 * multiplier * pow(1.10, upgrade_count), 1.35, 145.0)
+			attack.configure(22.0 * multiplier * pow(1.013, upgrade_count), 1.35, 145.0)
 			skill.skill_name = "뼈다귀 난사"
 			skill.damage_multiplier = 3.0
 		Role.TECH:
@@ -122,7 +122,7 @@ func _apply_role_stats(multiplier: float = 1.0, upgrade_level: int = 1, preserve
 			health.configure(120.0 * multiplier)
 			attack.configure(18.0 * multiplier, 1.15, 175.0)
 			skill.skill_name = "드론 폭격"
-			skill.damage_multiplier = 3.8 * pow(1.12, upgrade_count)
+			skill.damage_multiplier = 3.8 * pow(1.015, upgrade_count)
 	if preserve_health:
 		if was_dead:
 			health.current_health = 0.0

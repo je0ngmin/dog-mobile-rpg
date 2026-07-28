@@ -14,6 +14,10 @@ const SLIME_TEXTURES := [
 	preload("res://sprites/enemies/slime001.png"),
 	preload("res://sprites/enemies/slime002.png"),
 ]
+const BOSS_TEXTURES := [
+	preload("res://sprites/enemies/boss001.png"),
+	preload("res://sprites/enemies/boss002.png"),
+]
 
 var is_boss: bool = false
 var stage_number: int = 1
@@ -68,19 +72,26 @@ func configure(new_stage: int, boss: bool = false) -> void:
 	var health_factor := pow(1.12, stage_number - 1)
 	var damage_factor := pow(1.095, stage_number - 1)
 	if is_boss:
-		display_name = "돌연변이 우두머리"
-		name_label.position = Vector2(-70.0, -64.0)
-		visual_pivot.hide()
+		visual_pivot.show()
+		var boss_texture: Texture2D = BOSS_TEXTURES[(stage_number - 1) % BOSS_TEXTURES.size()]
+		display_name = "고철 포식자" if boss_texture == BOSS_TEXTURES[0] else "화염 까마귀"
+		name_label.position = Vector2(-90.0, -170.0)
+		name_label.size = Vector2(180.0, 22.0)
+		enemy_sprite.texture = boss_texture
+		var boss_scale := 125.0 / maxf(boss_texture.get_height(), 1.0)
+		enemy_sprite.scale = Vector2.ONE * boss_scale
+		enemy_sprite.position = Vector2(0.0, -62.5)
 		_body_color = Color("#b54b55")
-		scale = Vector2.ONE * 1.55
+		scale = Vector2.ONE
 		health.configure(300.0 * health_factor)
 		attack.configure(8.0 * damage_factor, 0.82, 82.0)
-		move_speed = 110.0 + minf(stage_number * 0.9, 45.0)
+		move_speed = 155.0 + minf(stage_number * 1.2, 60.0)
 	else:
 		visual_pivot.show()
 		var slime_texture: Texture2D = SLIME_TEXTURES[(stage_number - 1) % SLIME_TEXTURES.size()]
 		display_name = "폐허 슬라임" if slime_texture == SLIME_TEXTURES[0] else "화염 슬라임"
 		name_label.position = Vector2(-70.0, -112.0)
+		name_label.size = Vector2(140.0, 22.0)
 		enemy_sprite.texture = slime_texture
 		var uniform_scale := 78.0 / maxf(slime_texture.get_height(), 1.0)
 		enemy_sprite.scale = Vector2.ONE * uniform_scale
@@ -89,7 +100,7 @@ func configure(new_stage: int, boss: bool = false) -> void:
 		_body_color = palette[stage_number % palette.size()]
 		health.configure(48.0 * health_factor)
 		attack.configure(4.0 * damage_factor, 0.95, 72.0)
-		move_speed = 150.0 + minf(stage_number * 1.4, 70.0)
+		move_speed = 210.0 + minf(stage_number * 1.7, 90.0)
 	name_label.text = "%s  Lv.%d" % [display_name, enemy_level]
 	queue_redraw()
 
@@ -112,8 +123,12 @@ func _find_nearest_dog() -> Node2D:
 
 
 func _on_died() -> void:
+	var base_gold := GameState.gold_reward_for_stage(stage_number, is_boss)
+	var final_gold := GameState.apply_monster_gold_bonus(base_gold)
 	var loot := {
-		"gold": GameState.gold_reward_for_stage(stage_number, is_boss),
+		"gold": final_gold,
+		"base_gold": base_gold,
+		"gold_skill_bonus": final_gold - base_gold,
 		"food": (2 + stage_number / 2) * (5 if is_boss else 1),
 		"scrap": (1 + stage_number / 3) * (5 if is_boss else 1),
 		"parts": 1 if is_boss else 0,
@@ -132,12 +147,18 @@ func _on_health_changed(_current: float, _maximum: float) -> void:
 
 
 func _update_sprite_motion(delta: float, is_moving: bool, is_attacking: bool) -> void:
-	if is_boss:
-		return
 	var target_squash := 0.015
 	var target_rotation := 0.006
 	var animation_speed := 2.8
-	if is_attacking:
+	if is_boss and is_attacking:
+		target_squash = 0.11
+		target_rotation = 0.05
+		animation_speed = 10.5
+	elif is_boss and is_moving:
+		target_squash = 0.038
+		target_rotation = 0.016
+		animation_speed = 5.8
+	elif is_attacking:
 		target_squash = 0.16
 		target_rotation = 0.075
 		animation_speed = 14.0
@@ -153,15 +174,7 @@ func _update_sprite_motion(delta: float, is_moving: bool, is_attacking: bool) ->
 
 
 func _draw() -> void:
-	if is_boss:
-		var radius := 29.0
-		draw_circle(Vector2.ZERO, radius, _body_color)
-		draw_circle(Vector2(-8, -5), 3.0, Color("#f7d154"))
-		draw_circle(Vector2(8, -5), 3.0, Color("#f7d154"))
-		draw_line(Vector2(-9, 10), Vector2(10, 10), Color("#342d2c"), 4.0)
-		draw_colored_polygon(PackedVector2Array([Vector2(-22, -18), Vector2(-30, -42), Vector2(-8, -25)]), _body_color.darkened(0.2))
-		draw_colored_polygon(PackedVector2Array([Vector2(22, -18), Vector2(30, -42), Vector2(8, -25)]), _body_color.darkened(0.2))
-	var bar_width := 55.0
-	var bar_y := -39.0 if is_boss else -86.0
+	var bar_width := 90.0 if is_boss else 55.0
+	var bar_y := -143.0 if is_boss else -86.0
 	draw_rect(Rect2(-bar_width / 2.0, bar_y, bar_width, 5), Color("#452e35"))
 	draw_rect(Rect2(-bar_width / 2.0, bar_y, bar_width * health.ratio(), 5), Color("#e05666"))

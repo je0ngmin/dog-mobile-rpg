@@ -19,5 +19,6 @@ func _initialize() -> void:
 			"last_saved_unix": int(Time.get_unix_time_from_system()),
 			"character_purchased": [true, false, false],
 			"character_levels": [1, 1, 1],
+			"account_skill_levels": [1, 1],
 		}))
 	quit()
