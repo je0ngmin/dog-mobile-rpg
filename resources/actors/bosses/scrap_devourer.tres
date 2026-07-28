@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="ActorDefinition" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/actor_definition.gd" id="1_definition"]
+[ext_resource type="Texture2D" path="res://sprites/enemies/boss001.png" id="2_texture"]
+
+[resource]
+script = ExtResource("1_definition")
+actor_id = &"scrap_devourer"
+display_name = "고철 포식자"
+texture = ExtResource("2_texture")
+body_color = Color(0.709804, 0.294118, 0.333333, 1)
+base_health = 300.0
+base_attack = 8.0
+attack_cooldown = 0.82
+attack_range = 82.0
+move_speed = 155.0
+health_growth = 1.12
+attack_growth = 1.095
+speed_per_stage = 1.2
+speed_bonus_cap = 60.0
+visual_height = 125.0
+sprite_position = Vector2(0, -62.5)
+name_label_position = Vector2(-90, -170)
+name_label_size = Vector2(180, 22)
+health_bar_width = 90.0
+health_bar_y = -143.0

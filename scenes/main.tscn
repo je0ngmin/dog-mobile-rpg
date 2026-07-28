@@ -10,6 +10,10 @@
 [ext_resource type="Texture2D" uid="uid://bmy17gavb8m28" path="res://sprites/gold.png" id="7_tipki"]
 [ext_resource type="FontVariation" uid="uid://lditlvokrwg1" path="res://fonts/font_gold.tres" id="8_choun"]
 [ext_resource type="Texture2D" uid="uid://l0thkq55rrnt" path="res://sprites/dogs/dog001.png" id="8_dog_icon"]
+[ext_resource type="Texture2D" uid="uid://4mi1b1cq2hsm" path="res://sprites/dog-badge.png" id="9_dog_badge"]
+[ext_resource type="Script" uid="uid://dvgfyqqx4vscn" path="res://scripts/components/party_speech_bubble.gd" id="10_speech"]
+[ext_resource type="Resource" uid="uid://3wg8ay6120x4" path="res://resources/party_dialogue_messages.tres" id="11_dialogue"]
+[ext_resource type="Resource" path="res://resources/actors/actor_catalog.tres" id="12_actor_catalog"]
 
 [sub_resource type="Shader" id="Shader_boss_atmosphere"]
 code = "shader_type canvas_item;
@@ -66,6 +70,11 @@ shadow_color = Color(0.3647059, 0.05882353, 0.003921569, 1)
 [sub_resource type="LabelSettings" id="LabelSettings_cwgq3"]
 font = ExtResource("6_tefeu")
 font_size = 20
+font_color = Color(0.52, 0.89, 0.83, 1)
+outline_size = 2
+outline_color = Color(0.025, 0.16, 0.18, 1)
+shadow_color = Color(0.01, 0.05, 0.06, 0.9)
+shadow_offset = Vector2(2, 2)
 
 [sub_resource type="StyleBoxFlat" id="StyleProgress"]
 bg_color = Color(0.12, 0.15, 0.17, 0.96)
@@ -150,6 +159,7 @@ corner_radius_bottom_left = 14
 script = ExtResource("1")
 dog_scene = ExtResource("4")
 enemy_scene = ExtResource("5")
+actor_catalog = ExtResource("12_actor_catalog")
 
 [node name="World" type="Node2D" parent="." unique_id=146596248]
 script = ExtResource("2")
@@ -160,14 +170,25 @@ position = Vector2(430, 324)
 [node name="Background" type="Sprite2D" parent="World/Camera2D" unique_id=1104239154]
 z_index = -100
 z_as_relative = false
-scale = Vector2(0.7226, 0.7226)
 texture = ExtResource("7_bg001")
+
+[node name="PartySpeechBubble" type="Control" parent="World" unique_id=1941260088]
+z_index = 30
+layout_mode = 3
+anchors_preset = 0
+offset_left = 100.0
+offset_top = 378.0
+offset_right = 400.0
+offset_bottom = 507.0
+mouse_filter = 2
+script = ExtResource("10_speech")
+messages = ExtResource("11_dialogue")
 
 [node name="StageManager" type="Node" parent="." unique_id=345441494]
 script = ExtResource("3")
 
 [node name="GoldEffects" type="CanvasLayer" parent="." unique_id=312137500]
-layer = 5
+layer = 0
 
 [node name="Coins" type="Node2D" parent="GoldEffects" unique_id=1838159513]
 
@@ -211,34 +232,42 @@ theme_override_constants/margin_top = 16
 theme_override_constants/margin_right = 32
 theme_override_constants/margin_bottom = 16
 
-[node name="HBox" type="HBoxContainer" parent="UI/TopBar/Margin" unique_id=2083425772]
+[node name="VBox" type="VBoxContainer" parent="UI/TopBar/Margin" unique_id=267848150]
 layout_mode = 2
-theme_override_constants/separation = 36
+theme_override_constants/separation = 4
 
-[node name="HBoxContainer" type="HBoxContainer" parent="UI/TopBar/Margin/HBox" unique_id=1972492018]
+[node name="HBoxContainer" type="HBoxContainer" parent="UI/TopBar/Margin/VBox" unique_id=1972492018]
 layout_mode = 2
 
-[node name="TextureRect" type="TextureRect" parent="UI/TopBar/Margin/HBox/HBoxContainer" unique_id=2084595232]
+[node name="TextureRect" type="TextureRect" parent="UI/TopBar/Margin/VBox/HBoxContainer" unique_id=2084595232]
 layout_mode = 2
 texture = ExtResource("7_tipki")
 expand_mode = 2
 
-[node name="Resources" type="Label" parent="UI/TopBar/Margin/HBox/HBoxContainer" unique_id=616568406]
+[node name="Resources" type="Label" parent="UI/TopBar/Margin/VBox/HBoxContainer" unique_id=616568406]
 layout_mode = 2
-size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 17
 text = "0G"
 label_settings = SubResource("LabelSettings_ci2d0")
 vertical_alignment = 1
 
-[node name="Level" type="Label" parent="UI/TopBar/Margin/HBox" unique_id=1957907621]
-custom_minimum_size = Vector2(260, 0)
+[node name="LevelContainer" type="HBoxContainer" parent="UI/TopBar/Margin/VBox" unique_id=792556676]
+custom_minimum_size = Vector2(310, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.52, 0.89, 0.83, 1)
-theme_override_font_sizes/font_size = 17
+theme_override_constants/separation = 8
+
+[node name="Badge" type="TextureRect" parent="UI/TopBar/Margin/VBox/LevelContainer" unique_id=2115877812]
+custom_minimum_size = Vector2(72, 48)
+layout_mode = 2
+texture = ExtResource("9_dog_badge")
+expand_mode = 2
+stretch_mode = 5
+
+[node name="Level" type="Label" parent="UI/TopBar/Margin/VBox/LevelContainer" unique_id=1957907621]
+layout_mode = 2
+size_flags_horizontal = 3
 text = "원정대 Lv.1  EXP 0/40"
 label_settings = SubResource("LabelSettings_cwgq3")
-horizontal_alignment = 2
 vertical_alignment = 1
 
 [node name="BossProgress" type="ProgressBar" parent="UI" unique_id=801204372]
@@ -291,15 +320,6 @@ theme_override_constants/shadow_offset_y = 2
 theme_override_font_sizes/font_size = 23
 horizontal_alignment = 1
 
-[node name="RetryButton" type="Button" parent="UI" unique_id=697575386]
-visible = false
-offset_left = 466.0
-offset_top = 520.0
-offset_right = 686.0
-offset_bottom = 578.0
-theme_override_font_sizes/font_size = 20
-text = "모두 부활"
-
 [node name="CharacterButton" type="Button" parent="UI" unique_id=1763436075]
 offset_left = 28.0
 offset_top = 516.0
@@ -324,7 +344,7 @@ theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("StyleMenuButton")
 theme_override_styles/pressed = SubResource("StyleMenuButtonPressed")
 theme_override_styles/hover = SubResource("StyleMenuButtonHover")
-text = "공용 스킬"
+text = "스킬"
 icon = ExtResource("7_tipki")
 expand_icon = true
 
@@ -398,7 +418,7 @@ theme_override_constants/separation = 14
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.79, 0.36, 1)
 theme_override_font_sizes/font_size = 25
-text = "계정 공용 스킬"
+text = "스킬"
 horizontal_alignment = 1
 
 [node name="Description" type="Label" parent="UI/SkillPanel/Margin/VBox" unique_id=396646519]

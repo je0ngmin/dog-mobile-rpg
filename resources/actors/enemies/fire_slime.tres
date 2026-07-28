@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ActorDefinition" format=3 uid="uid://dno4vi7skwtwx"]
+
+[ext_resource type="Script" uid="uid://bykpdfl3xpsjl" path="res://scripts/resources/actor_definition.gd" id="1_definition"]
+[ext_resource type="Texture2D" uid="uid://b84n2movn5lbt" path="res://sprites/enemies/slime002.png" id="2_texture"]
+
+[resource]
+script = ExtResource("1_definition")
+actor_id = &"fire_slime"
+display_name = "화염 슬라임"
+texture = ExtResource("2_texture")
+body_color = Color(0.564706, 0.501961, 0.427451, 1)
+base_health = 40.0
+base_attack = 8.0
+attack_cooldown = 0.95
+attack_range = 72.0
+move_speed = 220.0
+health_growth = 1.12
+attack_growth = 1.095
+speed_per_stage = 1.7
+speed_bonus_cap = 90.0
+visual_height = 78.0
+sprite_position = Vector2(0, -39)

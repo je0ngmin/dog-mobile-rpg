@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ActorDefinition" format=3 uid="uid://wq2xkmk5qm3a"]
+
+[ext_resource type="Script" uid="uid://bykpdfl3xpsjl" path="res://scripts/resources/actor_definition.gd" id="1_definition"]
+[ext_resource type="Texture2D" uid="uid://dsg1a5g72pg75" path="res://sprites/enemies/slime001.png" id="2_texture"]
+
+[resource]
+script = ExtResource("1_definition")
+actor_id = &"ruin_slime"
+display_name = "폐허 슬라임"
+texture = ExtResource("2_texture")
+body_color = Color(0.498039, 0.54902, 0.470588, 1)
+base_health = 36.0
+base_attack = 4.0
+attack_cooldown = 0.95
+attack_range = 72.0
+move_speed = 210.0
+health_growth = 1.12
+attack_growth = 1.095
+speed_per_stage = 1.7
+speed_bonus_cap = 90.0
+visual_height = 78.0
+sprite_position = Vector2(0, -39)

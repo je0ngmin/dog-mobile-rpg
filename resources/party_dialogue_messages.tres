@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="PartyDialogueMessages" format=3 uid="uid://3wg8ay6120x4"]
+
+[ext_resource type="Script" uid="uid://n68ni8s5nu0l" path="res://scripts/resources/party_dialogue_messages.gd" id="1_dialogue"]
+
+[resource]
+script = ExtResource("1_dialogue")
+normal_messages = ["오늘도 힘차게 달려보자~!", "간식 냄새가 나는 것 같아.", "도시를 위해 조금만 더!", "이 길 끝에는 뭐가 있을까?", "발바닥은 멀쩡해, 계속 가자!", "우리라면 어디든 갈 수 있어!", "오늘 수확도 기대되는걸?", "언제까지 싸움을 계속해야 하지?"]
+teammate_down_messages = ["...{name}!!", "{name}, 조금만 버텨... {name}!!!", "동료가 쓰러졌어! 조심해!", "{name}이(가) 없다고 아직 끝난 게 아니야!", "모두 정신 바짝 차려!", "안 돼!!!"]
+boss_arrived_messages = ["보스가 온다! 모두 준비해!", "보스다, 절대 물러서지 마!", "엄청 큰 발소리가 들려...", "대형 적 발견! 전투 준비!", "모두 내 뒤로 모여!", "이번 녀석, 만만치 않아 보여."]
+boss_defeated_messages = ["해냈다! 다음 스테이지로 가자!", "우리 원정대가 또 해냈다!", "별거 아니었다멍", "마을에 돌아가서 자랑해야지!", "다들 무사하지? 정말 다행이야.", "이 기세로 계속 돌파하자!", "승리는 우리의 것!!"]

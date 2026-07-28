@@ -10,9 +10,12 @@ signal gold_dropped(world_position: Vector2, amount: int, is_boss_drop: bool)
 signal reward_logged(gold_amount: int, experience_amount: int, skill_bonus_gold: int)
 signal stage_transition_requested(next_stage: int)
 signal party_defeated
+signal party_member_defeated(dog: DogActor)
+signal boss_defeated
 signal combat_message(text: String)
 
 @export var enemy_scene: PackedScene
+@export var actor_catalog: ActorCatalog
 @export var enemies_before_boss: int = 5
 @export var spawn_interval: float = 1.25
 
@@ -33,7 +36,8 @@ func setup(world: Node2D, party: Array[DogActor], starting_stage: int) -> void:
 	_leader = party[0]
 	current_stage = maxi(starting_stage, 1)
 	for dog in _party:
-		dog.dog_defeated.connect(_on_dog_defeated)
+		if not dog.dog_defeated.is_connected(_on_dog_defeated):
+			dog.dog_defeated.connect(_on_dog_defeated)
 	stage_changed.emit(current_stage)
 	progress_changed.emit(kills, enemies_before_boss, boss_active)
 
@@ -62,14 +66,10 @@ func _process(delta: float) -> void:
 
 
 func add_party_member(dog: DogActor) -> void:
-	if dog in _party:
-		return
-	_party.append(dog)
-	dog.dog_defeated.connect(_on_dog_defeated)
-
-
-func revival_cost() -> int:
-	return GameState.gold_reward_for_stage(current_stage) * 4
+	if dog not in _party:
+		_party.append(dog)
+	if not dog.dog_defeated.is_connected(_on_dog_defeated):
+		dog.dog_defeated.connect(_on_dog_defeated)
 
 
 func restart_after_revival() -> bool:
@@ -101,7 +101,15 @@ func complete_stage_transition() -> void:
 
 
 func _spawn_enemy(as_boss: bool) -> void:
-	if enemy_scene == null:
+	if enemy_scene == null or actor_catalog == null:
+		return
+	var definition := (
+		actor_catalog.boss_for_stage(current_stage)
+		if as_boss
+		else actor_catalog.normal_enemy_for_stage(current_stage)
+	)
+	if definition == null:
+		push_error("스테이지에 사용할 적 ActorDefinition이 없습니다.")
 		return
 	var enemy := enemy_scene.instantiate() as EnemyActor
 	_world.add_child(enemy)
@@ -115,7 +123,7 @@ func _spawn_enemy(as_boss: bool) -> void:
 		var leader_x := _leader.global_position.x if is_instance_valid(_leader) else 500.0
 		spawn_x = leader_x + 700.0
 	enemy.global_position = Vector2(spawn_x, 320.0)
-	enemy.configure(current_stage, as_boss)
+	enemy.configure(current_stage, as_boss, definition)
 	enemy.defeated.connect(_on_enemy_defeated)
 	enemy.attack_visual.connect(_relay_attack_visual.bind(as_boss))
 
@@ -131,12 +139,13 @@ func _on_enemy_defeated(enemy: EnemyActor, loot: Dictionary) -> void:
 	)
 	if enemy.is_boss:
 		_heal_surviving_party()
+		boss_defeated.emit()
 		boss_active = false
 		boss_battle_ended.emit()
 		progression_paused = true
 		_pending_stage = current_stage + 1
 		stage_transition_requested.emit(_pending_stage)
-		combat_message.emit("보스를 격파했다! 다음 구역으로 이동합니다.")
+		combat_message.emit("보스를 격파했다!")
 	else:
 		kills += 1
 	progress_changed.emit(kills, enemies_before_boss, boss_active)
@@ -144,6 +153,7 @@ func _on_enemy_defeated(enemy: EnemyActor, loot: Dictionary) -> void:
 
 func _on_dog_defeated(_dog: DogActor) -> void:
 	if not _all_dogs_defeated():
+		party_member_defeated.emit(_dog)
 		return
 	var was_boss_battle := boss_active
 	progression_paused = true

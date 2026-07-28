@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ActorDefinition" format=3 uid="uid://dstblcc0yyv0j"]
+
+[ext_resource type="Script" uid="uid://bykpdfl3xpsjl" path="res://scripts/resources/actor_definition.gd" id="1_definition"]
+[ext_resource type="Texture2D" uid="uid://bp4u75uigne4m" path="res://sprites/dogs/dog003.png" id="2_texture"]
+
+[resource]
+script = ExtResource("1_definition")
+actor_id = &"moka"
+display_name = "모카"
+role = 2
+role_name = "기술형"
+texture = ExtResource("2_texture")
+body_color = Color(0.447059, 0.780392, 0.780392, 1)
+base_health = 120.0
+base_attack = 18.0
+attack_cooldown = 1.15
+attack_range = 175.0
+move_speed = 105.0
+upgrade_stat_name = "스킬 피해"
+upgrade_percent = 1.5
+skill_per_upgrade_percent = 1.5
+skill_name = "드론 폭격"
+skill_multiplier = 3.8

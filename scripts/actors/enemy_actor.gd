@@ -10,15 +10,7 @@ signal attack_visual(from: Vector2, to: Vector2, color: Color)
 @onready var enemy_sprite: Sprite2D = $VisualPivot/Sprite2D
 @onready var name_label: Label = $NameLabel
 
-const SLIME_TEXTURES := [
-	preload("res://sprites/enemies/slime001.png"),
-	preload("res://sprites/enemies/slime002.png"),
-]
-const BOSS_TEXTURES := [
-	preload("res://sprites/enemies/boss001.png"),
-	preload("res://sprites/enemies/boss002.png"),
-]
-
+var definition: ActorDefinition
 var is_boss: bool = false
 var stage_number: int = 1
 var enemy_level: int = 1
@@ -28,6 +20,8 @@ var _body_color := Color("#8b7d72")
 var _animation_phase: float = 0.0
 var _squash_amount: float = 0.0
 var _rotation_amount: float = 0.0
+var _health_bar_width: float = 55.0
+var _health_bar_y: float = -86.0
 
 
 func _ready() -> void:
@@ -65,42 +59,39 @@ func _physics_process(delta: float) -> void:
 	_update_sprite_motion(delta, velocity.length() > 1.0, is_attacking)
 
 
-func configure(new_stage: int, boss: bool = false) -> void:
+func configure(new_stage: int, boss: bool, new_definition: ActorDefinition) -> void:
+	definition = new_definition
 	stage_number = new_stage
 	enemy_level = maxi(stage_number, 1)
 	is_boss = boss
-	var health_factor := pow(1.12, stage_number - 1)
-	var damage_factor := pow(1.095, stage_number - 1)
-	if is_boss:
-		visual_pivot.show()
-		var boss_texture: Texture2D = BOSS_TEXTURES[(stage_number - 1) % BOSS_TEXTURES.size()]
-		display_name = "고철 포식자" if boss_texture == BOSS_TEXTURES[0] else "화염 까마귀"
-		name_label.position = Vector2(-90.0, -170.0)
-		name_label.size = Vector2(180.0, 22.0)
-		enemy_sprite.texture = boss_texture
-		var boss_scale := 125.0 / maxf(boss_texture.get_height(), 1.0)
-		enemy_sprite.scale = Vector2.ONE * boss_scale
-		enemy_sprite.position = Vector2(0.0, -62.5)
-		_body_color = Color("#b54b55")
-		scale = Vector2.ONE
-		health.configure(300.0 * health_factor)
-		attack.configure(8.0 * damage_factor, 0.82, 82.0)
-		move_speed = 155.0 + minf(stage_number * 1.2, 60.0)
-	else:
-		visual_pivot.show()
-		var slime_texture: Texture2D = SLIME_TEXTURES[(stage_number - 1) % SLIME_TEXTURES.size()]
-		display_name = "폐허 슬라임" if slime_texture == SLIME_TEXTURES[0] else "화염 슬라임"
-		name_label.position = Vector2(-70.0, -112.0)
-		name_label.size = Vector2(140.0, 22.0)
-		enemy_sprite.texture = slime_texture
-		var uniform_scale := 78.0 / maxf(slime_texture.get_height(), 1.0)
+	if definition == null:
+		push_error("EnemyActor에 ActorDefinition이 지정되지 않았습니다.")
+		return
+	var health_factor := pow(definition.health_growth, stage_number - 1)
+	var damage_factor := pow(definition.attack_growth, stage_number - 1)
+	display_name = definition.display_name
+	_body_color = definition.body_color
+	name_label.position = definition.name_label_position
+	name_label.size = definition.name_label_size
+	enemy_sprite.texture = definition.texture
+	if definition.texture != null:
+		var uniform_scale := definition.visual_height / maxf(definition.texture.get_height(), 1.0)
 		enemy_sprite.scale = Vector2.ONE * uniform_scale
-		enemy_sprite.position = Vector2(0.0, -39.0)
-		var palette := [Color("#7f8c78"), Color("#90806d"), Color("#72858e"), Color("#806f87")]
-		_body_color = palette[stage_number % palette.size()]
-		health.configure(48.0 * health_factor)
-		attack.configure(4.0 * damage_factor, 0.95, 72.0)
-		move_speed = 210.0 + minf(stage_number * 1.7, 90.0)
+	enemy_sprite.position = definition.sprite_position
+	_health_bar_width = definition.health_bar_width
+	_health_bar_y = definition.health_bar_y
+	visual_pivot.show()
+	scale = Vector2.ONE
+	health.configure(definition.base_health * health_factor)
+	attack.configure(
+		definition.base_attack * damage_factor,
+		definition.attack_cooldown,
+		definition.attack_range
+	)
+	move_speed = definition.move_speed + minf(
+		stage_number * definition.speed_per_stage,
+		definition.speed_bonus_cap
+	)
 	name_label.text = "%s  Lv.%d" % [display_name, enemy_level]
 	queue_redraw()
 
@@ -174,7 +165,8 @@ func _update_sprite_motion(delta: float, is_moving: bool, is_attacking: bool) ->
 
 
 func _draw() -> void:
-	var bar_width := 90.0 if is_boss else 55.0
-	var bar_y := -143.0 if is_boss else -86.0
-	draw_rect(Rect2(-bar_width / 2.0, bar_y, bar_width, 5), Color("#452e35"))
-	draw_rect(Rect2(-bar_width / 2.0, bar_y, bar_width * health.ratio(), 5), Color("#e05666"))
+	draw_rect(Rect2(-_health_bar_width / 2.0, _health_bar_y, _health_bar_width, 5), Color("#452e35"))
+	draw_rect(
+		Rect2(-_health_bar_width / 2.0, _health_bar_y, _health_bar_width * health.ratio(), 5),
+		Color("#e05666")
+	)

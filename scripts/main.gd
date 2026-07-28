@@ -2,17 +2,17 @@ extends Node
 
 @export var dog_scene: PackedScene
 @export var enemy_scene: PackedScene
+@export var actor_catalog: ActorCatalog
 
 @onready var world: WorldView = $World
 @onready var stage_manager: StageManager = $StageManager
 @onready var camera: Camera2D = $World/Camera2D
 @onready var stage_label: Label = $UI/BossProgress/Stage
-@onready var resource_label: Label = $UI/TopBar/Margin/HBox/HBoxContainer/Resources
-@onready var level_label: Label = $UI/TopBar/Margin/HBox/Level
+@onready var resource_label: Label = $UI/TopBar/Margin/VBox/HBoxContainer/Resources
+@onready var level_label: Label = $UI/TopBar/Margin/VBox/LevelContainer/Level
 @onready var progress_bar: ProgressBar = $UI/BossProgress
 @onready var progress_label: Label = $UI/BossProgress/Label
 @onready var message_label: Label = $UI/Message
-@onready var retry_button: Button = $UI/RetryButton
 @onready var character_button: Button = $UI/CharacterButton
 @onready var character_panel: PanelContainer = $UI/CharacterPanel
 @onready var character_cards: HBoxContainer = $UI/CharacterPanel/Margin/VBox/CharacterScroll/CharacterCards
@@ -24,19 +24,10 @@ extends Node
 @onready var gold_effects: Node2D = $GoldEffects/Coins
 @onready var stage_transition_overlay: ColorRect = $StageTransition/Overlay
 @onready var boss_atmosphere_overlay: ColorRect = $BossAtmosphere/Overlay
+@onready var party_speech_bubble: Control = $World/PartySpeechBubble
 var event_log_entries: VBoxContainer
 
-const CHARACTER_DATA := [
-	{"name": "보리", "role": DogActor.Role.ASSAULT, "role_name": "돌격형", "stat": "최대 체력", "percent": 1.5},
-	{"name": "탄이", "role": DogActor.Role.DAMAGE, "role_name": "공격형", "stat": "공격력", "percent": 1.3},
-	{"name": "모카", "role": DogActor.Role.TECH, "role_name": "기술형", "stat": "스킬 피해", "percent": 1.5},
-]
 const FORMATION_OFFSETS := [Vector2.ZERO, Vector2(-60.0, -42.0), Vector2(-112.0, 38.0)]
-const CHARACTER_TEXTURES := [
-	preload("res://sprites/dogs/dog001.png"),
-	preload("res://sprites/dogs/dog002.png"),
-	preload("res://sprites/dogs/dog003.png"),
-]
 const GOLD_TEXTURE := preload("res://sprites/gold.png")
 
 var party: Array[DogActor] = []
@@ -51,12 +42,19 @@ var _camera_shake_time: float = 0.0
 var _gold_label_tween: Tween
 var _stage_transition_active: bool = false
 var _healing_skill_cooldown_remaining: float = 0.0
+var _boss_text_effect: HBoxContainer
+var _boss_text_tweens: Array[Tween] = []
+var _boss_progress_active: bool = false
+var _message_text_effect: HBoxContainer
+var _message_text_tweens: Array[Tween] = []
+var _auto_revive_active: bool = false
 
 
 func _ready() -> void:
 	_create_event_log()
 	_create_party()
 	stage_manager.enemy_scene = enemy_scene
+	stage_manager.actor_catalog = actor_catalog
 	stage_manager.setup(world, party, GameState.highest_stage)
 	_stage_manager_ready = true
 	stage_manager.stage_changed.connect(_on_stage_changed)
@@ -68,6 +66,8 @@ func _ready() -> void:
 	stage_manager.reward_logged.connect(_on_reward_logged)
 	stage_manager.stage_transition_requested.connect(_on_stage_transition_requested)
 	stage_manager.party_defeated.connect(_on_party_defeated)
+	stage_manager.party_member_defeated.connect(_on_party_member_defeated)
+	stage_manager.boss_defeated.connect(_on_boss_defeated_dialogue)
 	stage_manager.combat_message.connect(_show_message)
 	stage_manager.combat_message.connect(_add_event_log)
 	GameState.resources_changed.connect(_refresh_resources)
@@ -75,7 +75,6 @@ func _ready() -> void:
 	GameState.offline_reward_ready.connect(_show_offline_reward)
 	GameState.character_roster_changed.connect(_on_character_roster_changed)
 	GameState.account_skills_changed.connect(_on_account_skills_changed)
-	retry_button.pressed.connect(_on_revive_requested)
 	character_button.pressed.connect(_open_character_panel)
 	skill_button.pressed.connect(_open_skill_panel)
 	$UI/CharacterPanel/Margin/VBox/Close.pressed.connect(character_panel.hide)
@@ -92,6 +91,7 @@ func _ready() -> void:
 func _create_event_log() -> void:
 	var panel := PanelContainer.new()
 	panel.name = "EventLog"
+	panel.z_index = -1
 	panel.anchor_left = 1.0
 	panel.anchor_top = 1.0
 	panel.anchor_right = 1.0
@@ -103,34 +103,19 @@ func _create_event_log() -> void:
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var panel_style := StyleBoxFlat.new()
 	panel_style.bg_color = Color(0.035, 0.055, 0.07, 0.82)
-	panel_style.border_width_left = 2
-	panel_style.border_width_top = 2
-	panel_style.border_width_right = 2
-	panel_style.border_width_bottom = 2
 	panel_style.border_color = Color(0.55, 0.43, 0.22, 0.72)
-	panel_style.corner_radius_top_left = 12
-	panel_style.corner_radius_top_right = 12
-	panel_style.corner_radius_bottom_right = 12
-	panel_style.corner_radius_bottom_left = 12
+	panel_style.set_border_width_all(2)
+	panel_style.set_corner_radius_all(12)
+	panel_style.content_margin_left = 14.0
+	panel_style.content_margin_top = 10.0
+	panel_style.content_margin_right = 14.0
+	panel_style.content_margin_bottom = 10.0
 	panel.add_theme_stylebox_override("panel", panel_style)
 	$UI.add_child(panel)
 
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_bottom", 10)
-	panel.add_child(margin)
-
 	var contents := VBoxContainer.new()
 	contents.add_theme_constant_override("separation", 5)
-	margin.add_child(contents)
-
-	var title := Label.new()
-	title.text = "원정 기록"
-	title.add_theme_color_override("font_color", Color("#ffc74d"))
-	title.add_theme_font_size_override("font_size", 16)
-	contents.add_child(title)
+	panel.add_child(contents)
 
 	event_log_entries = VBoxContainer.new()
 	event_log_entries.name = "Entries"
@@ -143,10 +128,9 @@ func _create_event_log() -> void:
 func _process(delta: float) -> void:
 	if is_instance_valid(leader):
 		camera.global_position.x = lerpf(camera.global_position.x, leader.global_position.x + 180.0, 0.06)
+	_update_party_speech_bubble_position()
 	_update_camera_shake(delta)
 	_update_healing_skill(delta)
-	if Input.is_action_just_pressed("retry_boss"):
-		_on_revive_requested()
 
 
 func _notification(what: int) -> void:
@@ -155,7 +139,7 @@ func _notification(what: int) -> void:
 
 
 func _create_party() -> void:
-	for index in 3:
+	for index in mini(GameState.character_purchased.size(), actor_catalog.characters.size()):
 		if GameState.character_purchased[index]:
 			_spawn_character(index)
 	camera.global_position = Vector2(leader.global_position.x + 180.0, 324.0)
@@ -164,20 +148,17 @@ func _create_party() -> void:
 func _spawn_character(character_index: int) -> void:
 	if party_by_index.has(character_index):
 		return
-	var data: Dictionary = CHARACTER_DATA[character_index]
+	var definition := actor_catalog.character_at(character_index)
+	if definition == null or character_index >= FORMATION_OFFSETS.size():
+		push_error("캐릭터 ActorDefinition 또는 편성 위치가 없습니다: %d" % character_index)
+		return
 	var dog := dog_scene.instantiate() as DogActor
+	dog.configure(definition, FORMATION_OFFSETS[character_index], leader)
 	world.add_child(dog)
 	var spawn_origin := Vector2(250.0, 320.0)
 	if is_instance_valid(leader):
 		spawn_origin = leader.global_position
 	dog.global_position = spawn_origin + FORMATION_OFFSETS[character_index]
-	dog.configure(
-		String(data["name"]),
-		int(data["role"]),
-		FORMATION_OFFSETS[character_index],
-		leader
-	)
-	dog.set_character_texture(CHARACTER_TEXTURES[character_index])
 	dog.apply_progression(GameState.player_level, GameState.character_levels[character_index])
 	dog.attack_visual.connect(world.add_combat_line)
 	dog.skill_visual.connect(world.add_combat_line)
@@ -195,10 +176,6 @@ func _refresh_resources() -> void:
 	level_label.text = "원정대 Lv.%d  EXP %d/%d" % [
 		GameState.player_level, GameState.experience, GameState.experience_to_next_level()
 	]
-	if stage_manager.progression_paused:
-		var cost := stage_manager.revival_cost()
-		retry_button.text = "모두 부활  %sG" % GameState.format_large_number(cost)
-		retry_button.disabled = GameState.gold < cost
 	if character_panel.visible:
 		_rebuild_character_rows()
 	if skill_panel.visible:
@@ -217,7 +194,94 @@ func _on_stage_changed(stage_number: int) -> void:
 func _on_progress_changed(kills: int, required: int, boss_active: bool) -> void:
 	progress_bar.max_value = required
 	progress_bar.value = required if boss_active else kills
-	progress_label.text = "BOSS 전투 중" if boss_active else "보스 출현까지  %d / %d" % [kills, required]
+	if boss_active:
+		progress_label.hide()
+		if not _boss_progress_active:
+			_play_boss_progress_text()
+	else:
+		_stop_boss_progress_text()
+		progress_label.text = "보스 출현까지  %d / %d" % [kills, required]
+		progress_label.show()
+	_boss_progress_active = boss_active
+
+
+func _play_boss_progress_text() -> void:
+	_stop_boss_progress_text()
+	var boss_text := "BOSS 전투 중"
+	_boss_text_effect = HBoxContainer.new()
+	_boss_text_effect.name = "BossTextEffect"
+	_boss_text_effect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_boss_text_effect.offset_top = 17.0
+	_boss_text_effect.offset_bottom = 17.0
+	_boss_text_effect.alignment = BoxContainer.ALIGNMENT_CENTER
+	_boss_text_effect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss_text_effect.z_index = 0
+	progress_bar.add_child(_boss_text_effect)
+	_populate_wave_text(
+		_boss_text_effect,
+		boss_text,
+		Color("#ffca58"),
+		15,
+		18.0,
+		34.0,
+		progress_label.label_settings,
+		_boss_text_tweens
+	)
+
+
+func _populate_wave_text(
+	container: HBoxContainer,
+	text: String,
+	color: Color,
+	font_size: int,
+	character_width: float,
+	character_height: float,
+	settings: LabelSettings,
+	tweens: Array[Tween]
+) -> void:
+	for index in text.length():
+		var character := text.substr(index, 1)
+		var slot := Control.new()
+		slot.custom_minimum_size = Vector2(character_width * 0.5 if character == " " else character_width, character_height)
+		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		container.add_child(slot)
+		var letter := Label.new()
+		letter.text = character
+		letter.size = slot.custom_minimum_size
+		letter.pivot_offset = letter.size * 0.5
+		letter.label_settings = settings
+		letter.add_theme_font_size_override("font_size", font_size)
+		letter.add_theme_color_override("font_shadow_color", Color(0.05, 0.02, 0.01, 0.9))
+		letter.add_theme_constant_override("shadow_offset_x", 2)
+		letter.add_theme_constant_override("shadow_offset_y", 2)
+		letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		letter.modulate = color
+		letter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(letter)
+		var wave := letter.create_tween().set_loops()
+		tweens.append(wave)
+		wave.tween_interval(index * 0.055)
+		wave.tween_property(letter, "position:y", -8.0, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		wave.parallel().tween_property(letter, "scale:y", 1.2, 0.14)
+		wave.parallel().tween_property(letter, "rotation", -0.055, 0.14)
+		wave.tween_property(letter, "position:y", 3.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		wave.parallel().tween_property(letter, "scale:y", 0.9, 0.12)
+		wave.parallel().tween_property(letter, "rotation", 0.04, 0.12)
+		wave.tween_property(letter, "position:y", 0.0, 0.17).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		wave.parallel().tween_property(letter, "scale:y", 1.0, 0.17)
+		wave.parallel().tween_property(letter, "rotation", 0.0, 0.17)
+		wave.tween_interval((text.length() - index - 1) * 0.055 + 0.25)
+
+
+func _stop_boss_progress_text() -> void:
+	for tween in _boss_text_tweens:
+		if tween:
+			tween.kill()
+	_boss_text_tweens.clear()
+	if is_instance_valid(_boss_text_effect):
+		_boss_text_effect.queue_free()
+	_boss_text_effect = null
 
 
 func _on_account_level_changed(new_level: int) -> void:
@@ -229,13 +293,31 @@ func _on_account_level_changed(new_level: int) -> void:
 
 
 func _on_party_defeated() -> void:
-	var cost := stage_manager.revival_cost()
-	retry_button.text = "모두 부활  %sG" % GameState.format_large_number(cost)
-	retry_button.disabled = GameState.gold < cost
-	retry_button.show()
+	if _auto_revive_active:
+		return
+	_auto_revive_active = true
+	var gold_before := GameState.gold
+	var penalty := ceili(float(gold_before) * 0.3)
+	GameState.spend_gold(penalty)
+	_add_event_log(
+		"원정대 전멸 · 골드 30%% 감소 (-%sG)" % GameState.format_large_number(penalty),
+		Color("#ff8d8d")
+	)
+	await _play_screen_transition(stage_manager.restart_after_revival)
+	party_speech_bubble.show_normal(true)
+	_auto_revive_active = false
+
+
+func _on_party_member_defeated(dog: DogActor) -> void:
+	party_speech_bubble.show_teammate_down(dog.display_name)
+
+
+func _on_boss_defeated_dialogue() -> void:
+	party_speech_bubble.show_boss_defeated()
 
 
 func _on_boss_battle_started() -> void:
+	party_speech_bubble.show_boss_arrived()
 	if _camera_zoom_tween:
 		_camera_zoom_tween.kill()
 	_camera_zoom_tween = create_tween()
@@ -283,6 +365,10 @@ func _on_boss_attacked() -> void:
 
 
 func _on_stage_transition_requested(_next_stage: int) -> void:
+	await _play_screen_transition(stage_manager.complete_stage_transition)
+
+
+func _play_screen_transition(midpoint_action: Callable) -> void:
 	if _stage_transition_active:
 		return
 	_stage_transition_active = true
@@ -299,7 +385,7 @@ func _on_stage_transition_requested(_next_stage: int) -> void:
 		0.72
 	)
 	await cover_tween.finished
-	stage_manager.complete_stage_transition()
+	midpoint_action.call()
 	await get_tree().process_frame
 	transition_material.set_shader_parameter("uncover", 1.0)
 	transition_material.set_shader_parameter("progress", 0.0)
@@ -317,14 +403,13 @@ func _on_stage_transition_requested(_next_stage: int) -> void:
 
 
 func _on_gold_dropped(world_position: Vector2, amount: int, is_boss_drop: bool) -> void:
-	var start_position := get_viewport().get_canvas_transform() * world_position
-	var target_position := resource_label.get_global_rect().get_center()
+	var start_position := _world_to_gold_effects_position(world_position)
 	var coin_count := 8 if is_boss_drop else 4
 	for index in coin_count:
 		var coin := Sprite2D.new()
 		coin.texture = GOLD_TEXTURE
 		coin.position = start_position + Vector2(randf_range(-18.0, 18.0), randf_range(-10.0, 12.0))
-		var coin_scale := 0.065 if is_boss_drop else 0.05
+		var coin_scale := 0.2 if is_boss_drop else 0.3
 		coin.scale = Vector2.ONE * coin_scale
 		gold_effects.add_child(coin)
 		var scatter_position := start_position + Vector2(
@@ -335,8 +420,17 @@ func _on_gold_dropped(world_position: Vector2, amount: int, is_boss_drop: bool) 
 		tween.tween_interval(index * 0.035)
 		tween.tween_property(coin, "position", scatter_position, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tween.tween_interval(0.18 + index * 0.025)
-		tween.tween_property(coin, "position", target_position, 0.72).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-		tween.parallel().tween_property(coin, "scale", Vector2.ONE * 0.018, 0.72)
+		var home_coin := func(progress: float) -> void:
+			if is_instance_valid(coin):
+				var live_target := _control_center_to_gold_effects_position(resource_label)
+				coin.position = scatter_position.lerp(live_target, progress)
+		tween.tween_method(
+			home_coin,
+			0.0,
+			1.0,
+			0.72
+		).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		tween.parallel().tween_property(coin, "scale", Vector2.ONE * 0.2, 0.72)
 		if index == coin_count - 1:
 			tween.tween_callback(_pulse_gold_label)
 		tween.tween_callback(coin.queue_free)
@@ -353,6 +447,16 @@ func _on_gold_dropped(world_position: Vector2, amount: int, is_boss_drop: bool) 
 	label_tween.tween_property(amount_label, "position:y", amount_label.position.y - 28.0, 0.75).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	label_tween.parallel().tween_property(amount_label, "modulate:a", 0.0, 0.75).set_delay(0.3)
 	label_tween.tween_callback(amount_label.queue_free)
+
+
+func _world_to_gold_effects_position(world_position: Vector2) -> Vector2:
+	var canvas_position := get_viewport().get_canvas_transform() * world_position
+	return gold_effects.get_global_transform_with_canvas().affine_inverse() * canvas_position
+
+
+func _control_center_to_gold_effects_position(control: Control) -> Vector2:
+	var canvas_position := control.get_global_transform_with_canvas() * (control.size * 0.5)
+	return gold_effects.get_global_transform_with_canvas().affine_inverse() * canvas_position
 
 
 func _on_reward_logged(gold_amount: int, experience_amount: int, skill_bonus_gold: int) -> void:
@@ -377,6 +481,8 @@ func _add_event_log(text: String, color: Color = Color.WHITE) -> void:
 	entry.add_theme_font_size_override("font_size", 14)
 	entry.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	entry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	entry.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	event_log_entries.add_child(entry)
 	if event_log_entries.get_child_count() > 7:
 		var oldest := event_log_entries.get_child(0) as Label
@@ -423,15 +529,21 @@ func _update_camera_shake(delta: float) -> void:
 		camera.offset = Vector2.ZERO
 
 
-func _on_revive_requested() -> void:
-	if not stage_manager.progression_paused:
+func _update_party_speech_bubble_position() -> void:
+	var anchor_dog: DogActor
+	if is_instance_valid(leader) and not leader.health.is_dead:
+		anchor_dog = leader
+	for dog in party:
+		if anchor_dog == null and is_instance_valid(dog) and not dog.health.is_dead:
+			anchor_dog = dog
+	if anchor_dog == null:
+		party_speech_bubble.hide()
 		return
-	var cost := stage_manager.revival_cost()
-	if not GameState.spend_gold(cost):
-		_show_message("부활에 필요한 골드가 부족합니다. 필요 골드: %sG" % GameState.format_large_number(cost))
-		return
-	if stage_manager.restart_after_revival():
-		retry_button.hide()
+	party_speech_bubble.show()
+	party_speech_bubble.global_position = anchor_dog.global_position + Vector2(
+		-party_speech_bubble.size.x * 0.5,
+		28.0
+	)
 
 
 func _open_character_panel() -> void:
@@ -444,8 +556,10 @@ func _rebuild_character_rows() -> void:
 	for child in character_cards.get_children():
 		character_cards.remove_child(child)
 		child.queue_free()
-	for character_index in CHARACTER_DATA.size():
-		var data: Dictionary = CHARACTER_DATA[character_index]
+	for character_index in actor_catalog.characters.size():
+		var definition := actor_catalog.character_at(character_index)
+		if definition == null:
+			continue
 		var card := PanelContainer.new()
 		card.custom_minimum_size = Vector2(210.0, 274.0)
 		var card_style := StyleBoxFlat.new()
@@ -465,13 +579,13 @@ func _rebuild_character_rows() -> void:
 		margin.add_child(content)
 		var portrait := TextureRect.new()
 		portrait.custom_minimum_size = Vector2(180.0, 132.0)
-		portrait.texture = CHARACTER_TEXTURES[character_index]
+		portrait.texture = definition.texture
 		portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		content.add_child(portrait)
 		var name_text := Label.new()
-		name_text.text = "%s · %s" % [data["name"], data["role_name"]]
+		name_text.text = "%s · %s" % [definition.display_name, definition.role_name]
 		name_text.add_theme_color_override("font_color", Color("#ffd76b"))
 		name_text.add_theme_font_size_override("font_size", 19)
 		name_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -485,11 +599,11 @@ func _rebuild_character_rows() -> void:
 		if GameState.character_purchased[character_index]:
 			var character_level: int = GameState.character_levels[character_index]
 			var total_bonus: float = (
-				(pow(1.0 + float(data["percent"]) / 100.0, character_level - 1) - 1.0) * 100.0
+				(pow(1.0 + definition.upgrade_percent / 100.0, character_level - 1) - 1.0) * 100.0
 			)
 			level_text.text = "Lv.%d\n%s +%.1f%% · 레벨당 +%.1f%%" % [
 				character_level,
-				data["stat"], total_bonus, data["percent"],
+				definition.upgrade_stat_name, total_bonus, definition.upgrade_percent,
 			]
 			var upgrade_cost: int = GameState.character_upgrade_cost(character_index)
 			action.text = "레벨 강화  %sG" % GameState.format_large_number(upgrade_cost)
@@ -497,7 +611,7 @@ func _rebuild_character_rows() -> void:
 		else:
 			portrait.modulate = Color(0.35, 0.35, 0.35, 0.8)
 			var purchase_cost: int = GameState.character_purchase_cost(character_index)
-			level_text.text = "미보유\n구매 후 %s 강화 가능" % data["stat"]
+			level_text.text = "미보유\n구매 후 %s 강화 가능" % definition.upgrade_stat_name
 			action.text = "구매  %sG" % GameState.format_large_number(purchase_cost)
 			action.disabled = GameState.gold < purchase_cost
 		action.pressed.connect(_on_character_action.bind(character_index))
@@ -507,22 +621,27 @@ func _rebuild_character_rows() -> void:
 
 
 func _on_character_action(character_index: int) -> void:
-	var data: Dictionary = CHARACTER_DATA[character_index]
+	var definition := actor_catalog.character_at(character_index)
+	if definition == null:
+		return
 	if GameState.character_purchased[character_index]:
 		if GameState.upgrade_character(character_index):
 			_show_message("%s 강화 완료! %s +%.1f%%" % [
-				data["name"], data["stat"], data["percent"],
+				definition.display_name, definition.upgrade_stat_name, definition.upgrade_percent,
 			])
 			_add_event_log("%s Lv.%d 강화 · %s +%.1f%%" % [
-				data["name"],
+				definition.display_name,
 				GameState.character_levels[character_index],
-				data["stat"],
-				data["percent"],
+				definition.upgrade_stat_name,
+				definition.upgrade_percent,
 			], Color("#7de7ff"))
 	else:
 		if GameState.purchase_character(character_index):
-			_show_message("%s가 원정대에 합류했습니다!" % data["name"])
-			_add_event_log("새 동료 %s가 원정대에 합류" % data["name"], Color("#ffcf69"))
+			_show_message("%s가 원정대에 합류했습니다!" % definition.display_name)
+			_add_event_log(
+				"새 동료 %s가 원정대에 합류" % definition.display_name,
+				Color("#ffcf69")
+			)
 
 
 func _on_character_roster_changed(character_index: int) -> void:
@@ -635,6 +754,10 @@ func _update_healing_skill(delta: float) -> void:
 
 
 func _show_message(text: String) -> void:
+	if text.begins_with("보스를 격파했다!"):
+		_play_boss_defeat_message(text)
+		return
+	_stop_message_text_effect()
 	message_label.text = text
 	message_label.modulate.a = 1.0
 	message_label.show()
@@ -643,6 +766,56 @@ func _show_message(text: String) -> void:
 	_message_tween = create_tween()
 	_message_tween.tween_interval(2.2)
 	_message_tween.tween_property(message_label, "modulate:a", 0.0, 0.5)
+
+
+func _play_boss_defeat_message(text: String) -> void:
+	if _message_tween:
+		_message_tween.kill()
+	_stop_message_text_effect()
+	message_label.hide()
+	_message_text_effect = HBoxContainer.new()
+	_message_text_effect.name = "BossDefeatTextEffect"
+	_message_text_effect.position = message_label.position
+	_message_text_effect.size = message_label.size
+	_message_text_effect.alignment = BoxContainer.ALIGNMENT_CENTER
+	_message_text_effect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_message_text_effect.z_index = message_label.z_index + 1
+	$UI.add_child(_message_text_effect)
+	_populate_wave_text(
+		_message_text_effect,
+		text,
+		Color("#ffd05a"),
+		22,
+		22.0,
+		message_label.size.y,
+		message_label.label_settings,
+		_message_text_tweens
+	)
+	_message_tween = create_tween()
+	_message_tween.tween_interval(2.2)
+	_message_tween.tween_property(_message_text_effect, "modulate:a", 0.0, 0.5)
+	_message_tween.tween_callback(_finish_message_text_effect)
+
+
+func _finish_message_text_effect() -> void:
+	for tween in _message_text_tweens:
+		if tween:
+			tween.kill()
+	_message_text_tweens.clear()
+	if is_instance_valid(_message_text_effect):
+		_message_text_effect.queue_free()
+	_message_text_effect = null
+	_message_tween = null
+
+
+func _stop_message_text_effect() -> void:
+	for tween in _message_text_tweens:
+		if tween:
+			tween.kill()
+	_message_text_tweens.clear()
+	if is_instance_valid(_message_text_effect):
+		_message_text_effect.queue_free()
+	_message_text_effect = null
 
 
 func _show_offline_reward(reward: Dictionary) -> void:

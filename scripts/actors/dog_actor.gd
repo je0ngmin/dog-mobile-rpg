@@ -20,6 +20,7 @@ const UI_FONT := preload("res://fonts/AstaSans-SemiBold.ttf")
 @onready var character_sprite: Sprite2D = $VisualPivot/Sprite2D
 
 var target: Node2D
+var definition: ActorDefinition
 var formation_offset := Vector2.ZERO
 var leader: DogActor
 var character_level: int = 1
@@ -67,22 +68,27 @@ func _physics_process(delta: float) -> void:
 	_update_sprite_motion(delta, velocity.length() > 1.0, is_attacking)
 
 
-func configure(new_name: String, new_role: Role, offset: Vector2, leader_dog: DogActor = null) -> void:
-	display_name = new_name
-	role = new_role
+func configure(new_definition: ActorDefinition, offset: Vector2, leader_dog: DogActor = null) -> void:
+	definition = new_definition
 	formation_offset = offset
 	leader = leader_dog
 	if is_node_ready():
 		_apply_role_stats()
 
 
-func set_character_texture(texture: Texture2D) -> void:
-	if texture == null:
+func _apply_definition_visual() -> void:
+	if definition == null:
 		return
-	character_sprite.texture = texture
-	var uniform_scale := 100.0 / maxf(texture.get_height(), 1.0)
+	display_name = definition.display_name
+	role = definition.role
+	move_speed = definition.move_speed
+	_body_color = definition.body_color
+	if definition.texture == null:
+		return
+	character_sprite.texture = definition.texture
+	var uniform_scale := definition.visual_height / maxf(definition.texture.get_height(), 1.0)
 	character_sprite.scale = Vector2.ONE * uniform_scale
-	character_sprite.position = Vector2(0.0, -50.0)
+	character_sprite.position = definition.sprite_position
 
 
 func apply_progression(account_level: int, upgrade_level: int) -> void:
@@ -103,28 +109,23 @@ func revive(at_position: Vector2) -> void:
 
 
 func _apply_role_stats(multiplier: float = 1.0, upgrade_level: int = 1, preserve_health: bool = false) -> void:
+	if definition == null:
+		return
+	_apply_definition_visual()
 	var was_dead := health.is_dead
 	var old_ratio := health.ratio()
 	var upgrade_count := maxi(upgrade_level - 1, 0)
-	match role:
-		Role.ASSAULT:
-			_body_color = Color("#d9904f")
-			health.configure(180.0 * multiplier * pow(1.015, upgrade_count))
-			attack.configure(14.0 * multiplier, 1.1, 92.0)
-			skill.skill_name = "방패 돌진"
-			skill.damage_multiplier = 2.2
-		Role.DAMAGE:
-			_body_color = Color("#f0c15d")
-			health.configure(105.0 * multiplier)
-			attack.configure(22.0 * multiplier * pow(1.013, upgrade_count), 1.35, 145.0)
-			skill.skill_name = "뼈다귀 난사"
-			skill.damage_multiplier = 3.0
-		Role.TECH:
-			_body_color = Color("#72c7c7")
-			health.configure(120.0 * multiplier)
-			attack.configure(18.0 * multiplier, 1.15, 175.0)
-			skill.skill_name = "드론 폭격"
-			skill.damage_multiplier = 3.8 * pow(1.015, upgrade_count)
+	var health_upgrade := pow(1.0 + definition.health_per_upgrade_percent / 100.0, upgrade_count)
+	var attack_upgrade := pow(1.0 + definition.attack_per_upgrade_percent / 100.0, upgrade_count)
+	var skill_upgrade := pow(1.0 + definition.skill_per_upgrade_percent / 100.0, upgrade_count)
+	health.configure(definition.base_health * multiplier * health_upgrade)
+	attack.configure(
+		definition.base_attack * multiplier * attack_upgrade,
+		definition.attack_cooldown,
+		definition.attack_range
+	)
+	skill.skill_name = definition.skill_name
+	skill.damage_multiplier = definition.skill_multiplier * skill_upgrade
 	if preserve_health:
 		if was_dead:
 			health.current_health = 0.0

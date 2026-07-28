@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ActorCatalog" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/actor_catalog.gd" id="1_catalog"]
+[ext_resource type="Resource" path="res://resources/actors/characters/bori.tres" id="2_bori"]
+[ext_resource type="Resource" path="res://resources/actors/characters/tani.tres" id="3_tani"]
+[ext_resource type="Resource" path="res://resources/actors/characters/moka.tres" id="4_moka"]
+[ext_resource type="Resource" path="res://resources/actors/enemies/ruin_slime.tres" id="5_ruin_slime"]
+[ext_resource type="Resource" path="res://resources/actors/enemies/fire_slime.tres" id="6_fire_slime"]
+[ext_resource type="Resource" path="res://resources/actors/bosses/scrap_devourer.tres" id="7_scrap_devourer"]
+[ext_resource type="Resource" path="res://resources/actors/bosses/fire_crow.tres" id="8_fire_crow"]
+
+[resource]
+script = ExtResource("1_catalog")
+characters = Array[Resource]([ExtResource("2_bori"), ExtResource("3_tani"), ExtResource("4_moka")])
+normal_enemies = Array[Resource]([ExtResource("5_ruin_slime"), ExtResource("6_fire_slime")])
+bosses = Array[Resource]([ExtResource("7_scrap_devourer"), ExtResource("8_fire_crow")])
