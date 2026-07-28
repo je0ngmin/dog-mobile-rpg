@@ -1,0 +1,34 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://cbuyttrryqbx7" path="res://scripts/actors/dog_actor.gd" id="1"]
+[ext_resource type="Script" uid="uid://eat0hqq4udje" path="res://scripts/components/health_component.gd" id="2"]
+[ext_resource type="Script" uid="uid://b3kaa7iwl8xo8" path="res://scripts/components/attack_component.gd" id="3"]
+[ext_resource type="Script" uid="uid://xk2ep5ryyc5u" path="res://scripts/components/auto_skill_component.gd" id="4"]
+[ext_resource type="Texture2D" uid="uid://l0thkq55rrnt" path="res://sprites/dogs/dog001.png" id="5"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_dog"]
+radius = 20.0
+height = 48.0
+
+[node name="Dog" type="CharacterBody2D"]
+script = ExtResource("1")
+
+[node name="VisualPivot" type="Node2D" parent="."]
+
+[node name="Sprite2D" type="Sprite2D" parent="VisualPivot"]
+position = Vector2(0, -50)
+scale = Vector2(0.115625, 0.116279)
+texture = ExtResource("5")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -2)
+shape = SubResource("CapsuleShape2D_dog")
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("2")
+
+[node name="AttackComponent" type="Node" parent="."]
+script = ExtResource("3")
+
+[node name="AutoSkillComponent" type="Node" parent="."]
+script = ExtResource("4")

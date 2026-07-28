@@ -1,0 +1,298 @@
+[gd_scene format=3 uid="uid://dyn7ku1dwest8"]
+
+[ext_resource type="Script" uid="uid://bsbdg878qpxnt" path="res://scripts/main.gd" id="1"]
+[ext_resource type="Script" uid="uid://cfv5oqrvwsxxv" path="res://scripts/world/world_view.gd" id="2"]
+[ext_resource type="Script" uid="uid://5jpqnf3yhq23" path="res://scripts/systems/stage_manager.gd" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/actors/dog.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/actors/enemy.tscn" id="5"]
+[ext_resource type="FontVariation" uid="uid://b5uia6v4r5uu8" path="res://fonts/font_variation.tres" id="6_tefeu"]
+[ext_resource type="Texture2D" uid="uid://liwdi1k4qons" path="res://sprites/backgrounds/BG001.png" id="7_bg001"]
+[ext_resource type="Texture2D" uid="uid://bmy17gavb8m28" path="res://sprites/gold.png" id="7_tipki"]
+
+[sub_resource type="StyleBoxFlat" id="StyleTop"]
+bg_color = Color(0.047058824, 0.07450981, 0.09019608, 0)
+
+[sub_resource type="LabelSettings" id="LabelSettings_ci2d0"]
+font = ExtResource("6_tefeu")
+font_size = 24
+font_color = Color(1, 0.972549, 0.023529412, 1)
+outline_size = 2
+outline_color = Color(0.3647059, 0.05882353, 0.003921569, 1)
+shadow_color = Color(0.3647059, 0.05882353, 0.003921569, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_cwgq3"]
+font = ExtResource("6_tefeu")
+font_size = 20
+
+[sub_resource type="StyleBoxFlat" id="StyleProgress"]
+bg_color = Color(0.12, 0.15, 0.17, 0.96)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleProgressFill"]
+bg_color = Color(0.82, 0.28, 0.33, 1)
+corner_radius_top_left = 9
+corner_radius_top_right = 9
+corner_radius_bottom_right = 9
+corner_radius_bottom_left = 9
+
+[sub_resource type="LabelSettings" id="LabelSettings_vw5s6"]
+font = ExtResource("6_tefeu")
+font_size = 20
+outline_size = 2
+outline_color = Color(0.101867564, 0.10186755, 0.10186755, 1)
+shadow_color = Color(0, 0, 0, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_8vkvh"]
+font = ExtResource("6_tefeu")
+outline_size = 2
+outline_color = Color(0, 0, 0, 1)
+shadow_color = Color(0, 0, 0, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_ljo1c"]
+font = ExtResource("6_tefeu")
+font_size = 20
+outline_size = 1
+outline_color = Color(0.11825981, 0.12500325, 0.15014526, 1)
+
+[sub_resource type="StyleBoxFlat" id="StylePanel"]
+bg_color = Color(0.055, 0.09, 0.11, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.43, 0.7, 0.68, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[node name="Main" type="Node" unique_id=1019957106]
+script = ExtResource("1")
+dog_scene = ExtResource("4")
+enemy_scene = ExtResource("5")
+
+[node name="World" type="Node2D" parent="." unique_id=146596248]
+script = ExtResource("2")
+
+[node name="Camera2D" type="Camera2D" parent="World" unique_id=2043669770]
+position = Vector2(430, 324)
+
+[node name="Background" type="Sprite2D" parent="World/Camera2D" unique_id=1104239154]
+z_index = -100
+z_as_relative = false
+scale = Vector2(0.7226, 0.7226)
+texture = ExtResource("7_bg001")
+
+[node name="StageManager" type="Node" parent="." unique_id=345441494]
+script = ExtResource("3")
+
+[node name="GoldEffects" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="Coins" type="Node2D" parent="GoldEffects"]
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=444187947]
+
+[node name="TopBar" type="PanelContainer" parent="UI" unique_id=1188668395]
+offset_right = 1152.0
+offset_bottom = 86.0
+theme_override_styles/panel = SubResource("StyleTop")
+
+[node name="Margin" type="MarginContainer" parent="UI/TopBar" unique_id=911103280]
+layout_mode = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 16
+
+[node name="HBox" type="HBoxContainer" parent="UI/TopBar/Margin" unique_id=2083425772]
+layout_mode = 2
+theme_override_constants/separation = 36
+
+[node name="HBoxContainer" type="HBoxContainer" parent="UI/TopBar/Margin/HBox" unique_id=1972492018]
+layout_mode = 2
+
+[node name="TextureRect" type="TextureRect" parent="UI/TopBar/Margin/HBox/HBoxContainer" unique_id=2084595232]
+layout_mode = 2
+texture = ExtResource("7_tipki")
+expand_mode = 2
+
+[node name="Resources" type="Label" parent="UI/TopBar/Margin/HBox/HBoxContainer" unique_id=616568406]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 17
+text = "0G"
+label_settings = SubResource("LabelSettings_ci2d0")
+vertical_alignment = 1
+
+[node name="Level" type="Label" parent="UI/TopBar/Margin/HBox" unique_id=1957907621]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.52, 0.89, 0.83, 1)
+theme_override_font_sizes/font_size = 17
+text = "원정대 Lv.1  EXP 0/40"
+label_settings = SubResource("LabelSettings_cwgq3")
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="BossProgress" type="ProgressBar" parent="UI" unique_id=801204372]
+offset_left = 326.0
+offset_top = 104.0
+offset_right = 826.0
+offset_bottom = 140.0
+mouse_filter = 2
+theme_override_styles/background = SubResource("StyleProgress")
+theme_override_styles/fill = SubResource("StyleProgressFill")
+show_percentage = false
+
+[node name="Stage" type="Label" parent="UI/BossProgress" unique_id=1192292616]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 0
+offset_top = -21.0
+offset_right = 500.0
+offset_bottom = 27.0
+theme_override_colors/font_color = Color(0.98, 0.79, 0.36, 1)
+theme_override_font_sizes/font_size = 21
+text = "버려진 주택가  1-1"
+label_settings = SubResource("LabelSettings_vw5s6")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Label" type="Label" parent="UI/BossProgress" unique_id=362507431]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 17.0
+offset_bottom = 17.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 15
+text = "보스 출현까지 0 / 8"
+label_settings = SubResource("LabelSettings_8vkvh")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Message" type="Label" parent="UI" unique_id=602137038]
+offset_left = 276.0
+offset_top = 161.0
+offset_right = 876.0
+offset_bottom = 205.0
+theme_override_colors/font_color = Color(1, 0.85, 0.45, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 23
+horizontal_alignment = 1
+
+[node name="RetryButton" type="Button" parent="UI" unique_id=697575386]
+visible = false
+offset_left = 466.0
+offset_top = 520.0
+offset_right = 686.0
+offset_bottom = 578.0
+theme_override_font_sizes/font_size = 20
+text = "모두 부활"
+
+[node name="CharacterButton" type="Button" parent="UI" unique_id=1763436075]
+offset_left = 28.0
+offset_top = 528.0
+offset_right = 208.0
+offset_bottom = 584.0
+theme_override_fonts/font = ExtResource("6_tefeu")
+theme_override_font_sizes/font_size = 20
+text = "캐릭터"
+
+[node name="BottomHint" type="Label" parent="UI" unique_id=698818789]
+offset_left = 26.0
+offset_top = 602.0
+offset_right = 1126.0
+offset_bottom = 632.0
+theme_override_colors/font_color = Color(0.68, 0.74, 0.75, 1)
+theme_override_font_sizes/font_size = 15
+text = "자동 원정 진행 중  ·  이동 / 공격 / 스킬 자동  ·  전멸 시 골드로 부활  ·  최대 오프라인 보상 8시간"
+label_settings = SubResource("LabelSettings_ljo1c")
+horizontal_alignment = 1
+
+[node name="CharacterPanel" type="PanelContainer" parent="UI" unique_id=495756893]
+visible = false
+offset_left = 236.0
+offset_top = 112.0
+offset_right = 916.0
+offset_bottom = 562.0
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="Margin" type="MarginContainer" parent="UI/CharacterPanel" unique_id=1836311823]
+layout_mode = 2
+theme_override_constants/margin_left = 30
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 30
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="UI/CharacterPanel/Margin" unique_id=935655128]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="UI/CharacterPanel/Margin/VBox" unique_id=157356620]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.79, 0.36, 1)
+theme_override_font_sizes/font_size = 25
+text = "원정대 캐릭터"
+horizontal_alignment = 1
+
+[node name="Description" type="Label" parent="UI/CharacterPanel/Margin/VBox" unique_id=1076445232]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.67, 0.78, 0.79, 1)
+text = "새 동료를 구매하거나 보유 캐릭터의 핵심 속성을 강화합니다."
+horizontal_alignment = 1
+
+[node name="CharacterRows" type="VBoxContainer" parent="UI/CharacterPanel/Margin/VBox" unique_id=1572122516]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="Close" type="Button" parent="UI/CharacterPanel/Margin/VBox" unique_id=1830588873]
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+text = "닫기"
+
+[node name="OfflinePanel" type="PanelContainer" parent="UI" unique_id=600634272]
+visible = false
+offset_left = 366.0
+offset_top = 214.0
+offset_right = 786.0
+offset_bottom = 428.0
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="Margin" type="MarginContainer" parent="UI/OfflinePanel" unique_id=701615814]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="UI/OfflinePanel/Margin" unique_id=1318959051]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="UI/OfflinePanel/Margin/VBox" unique_id=1482730236]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.79, 0.36, 1)
+theme_override_font_sizes/font_size = 24
+text = "원정대가 돌아왔어요!"
+horizontal_alignment = 1
+
+[node name="Reward" type="Label" parent="UI/OfflinePanel/Margin/VBox" unique_id=1860832887]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 18
+text = "오프라인 보상"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Close" type="Button" parent="UI/OfflinePanel/Margin/VBox" unique_id=1324109136]
+layout_mode = 2
+text = "보상 확인"
