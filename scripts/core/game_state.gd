@@ -62,21 +62,21 @@ func spend_gold(amount: int) -> bool:
 
 
 func character_purchase_cost(character_index: int) -> int:
-	var costs := [0, 1500, 5000]
+	var costs := [0, 1_500_000, 5_000_000]
 	return costs[character_index] if character_index >= 0 and character_index < costs.size() else 0
 
 
 func character_upgrade_cost(character_index: int) -> int:
 	if character_index < 0 or character_index >= character_levels.size():
 		return 0
-	var base_costs := [500, 650, 800]
+	var base_costs := [500_000, 650_000, 800_000]
 	var cost := float(base_costs[character_index]) * pow(1.55, character_levels[character_index] - 1)
 	cost = minf(cost, float(MAX_GOLD))
 	return int(round(cost))
 
 
 func gold_reward_for_stage(stage_number: int, boss: bool = false) -> int:
-	var reward := 120.0 * pow(1.32, maxi(stage_number - 1, 0))
+	var reward := 120_000.0 * pow(1.32, maxi(stage_number - 1, 0))
 	if boss:
 		reward *= 12.0
 	reward = minf(reward, 500_000_000_000_000_000.0)
@@ -144,7 +144,7 @@ func upgrade_character(character_index: int) -> bool:
 func account_skill_upgrade_cost(skill_index: int) -> int:
 	if skill_index < 0 or skill_index >= account_skill_levels.size():
 		return 0
-	var base_costs := [2000, 2600]
+	var base_costs := [2_000_000, 2_600_000]
 	var cost := float(base_costs[skill_index]) * pow(1.65, account_skill_levels[skill_index] - 1)
 	return int(round(minf(cost, float(MAX_GOLD))))
 

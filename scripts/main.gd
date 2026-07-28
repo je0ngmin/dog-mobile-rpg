@@ -561,7 +561,7 @@ func _rebuild_character_rows() -> void:
 		if definition == null:
 			continue
 		var card := PanelContainer.new()
-		card.custom_minimum_size = Vector2(210.0, 274.0)
+		card.custom_minimum_size = Vector2(210.0, 286.0)
 		var card_style := StyleBoxFlat.new()
 		card_style.bg_color = Color("#132329")
 		card_style.border_color = Color("#426268")
@@ -578,7 +578,7 @@ func _rebuild_character_rows() -> void:
 		content.add_theme_constant_override("separation", 7)
 		margin.add_child(content)
 		var portrait := TextureRect.new()
-		portrait.custom_minimum_size = Vector2(180.0, 132.0)
+		portrait.custom_minimum_size = Vector2(180.0, 112.0)
 		portrait.texture = definition.texture
 		portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -598,11 +598,14 @@ func _rebuild_character_rows() -> void:
 		action.custom_minimum_size = Vector2(0.0, 44.0)
 		if GameState.character_purchased[character_index]:
 			var character_level: int = GameState.character_levels[character_index]
+			var combat_values := _character_combat_values(definition, character_level)
 			var total_bonus: float = (
 				(pow(1.0 + definition.upgrade_percent / 100.0, character_level - 1) - 1.0) * 100.0
 			)
-			level_text.text = "Lv.%d\n%s +%.1f%% · 레벨당 +%.1f%%" % [
+			level_text.text = "Lv.%d\nHP %s · 공격력 %s\n%s +%.1f%% · 레벨당 +%.1f%%" % [
 				character_level,
+				GameState.format_large_number(int(round(combat_values.x))),
+				GameState.format_large_number(int(round(combat_values.y))),
 				definition.upgrade_stat_name, total_bonus, definition.upgrade_percent,
 			]
 			var upgrade_cost: int = GameState.character_upgrade_cost(character_index)
@@ -611,13 +614,34 @@ func _rebuild_character_rows() -> void:
 		else:
 			portrait.modulate = Color(0.35, 0.35, 0.35, 0.8)
 			var purchase_cost: int = GameState.character_purchase_cost(character_index)
-			level_text.text = "미보유\n구매 후 %s 강화 가능" % definition.upgrade_stat_name
+			var base_values := _character_combat_values(definition, 1)
+			level_text.text = "미보유\n기본 HP %s · 공격력 %s\n구매 후 %s 강화 가능" % [
+				GameState.format_large_number(int(round(base_values.x))),
+				GameState.format_large_number(int(round(base_values.y))),
+				definition.upgrade_stat_name,
+			]
 			action.text = "구매  %sG" % GameState.format_large_number(purchase_cost)
 			action.disabled = GameState.gold < purchase_cost
 		action.pressed.connect(_on_character_action.bind(character_index))
 		content.add_child(level_text)
 		content.add_child(action)
 		character_cards.add_child(card)
+
+
+func _character_combat_values(definition: ActorDefinition, character_level: int) -> Vector2:
+	var account_multiplier := 1.0 + float(GameState.player_level - 1) * 0.02
+	var upgrade_count := maxi(character_level - 1, 0)
+	var health := (
+		definition.base_health
+		* account_multiplier
+		* pow(1.0 + definition.health_per_upgrade_percent / 100.0, upgrade_count)
+	)
+	var attack_value := (
+		definition.base_attack
+		* account_multiplier
+		* pow(1.0 + definition.attack_per_upgrade_percent / 100.0, upgrade_count)
+	)
+	return Vector2(health, attack_value)
 
 
 func _on_character_action(character_index: int) -> void:

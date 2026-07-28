@@ -3,6 +3,7 @@ extends CharacterBody2D
 
 signal defeated(enemy: EnemyActor, loot: Dictionary)
 signal attack_visual(from: Vector2, to: Vector2, color: Color)
+signal damage_received(world_position: Vector2, amount: float, boss_hit: bool)
 
 @onready var health: HealthComponent = $HealthComponent
 @onready var attack: AttackComponent = $AttackComponent
@@ -27,6 +28,7 @@ var _health_bar_y: float = -86.0
 func _ready() -> void:
 	add_to_group("enemies")
 	health.died.connect(_on_died)
+	health.damaged.connect(_on_damaged)
 	health.health_changed.connect(_on_health_changed)
 	attack.attack_performed.connect(_on_attack)
 	_animation_phase = randf() * TAU
@@ -131,6 +133,10 @@ func _on_died() -> void:
 
 func _on_attack(hit_target: Node, _damage: float) -> void:
 	attack_visual.emit(global_position, (hit_target as Node2D).global_position, Color("#ff6b6b"))
+
+
+func _on_damaged(amount: float) -> void:
+	damage_received.emit(global_position, amount, is_boss)
 
 
 func _on_health_changed(_current: float, _maximum: float) -> void:

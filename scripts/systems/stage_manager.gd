@@ -126,6 +126,7 @@ func _spawn_enemy(as_boss: bool) -> void:
 	enemy.configure(current_stage, as_boss, definition)
 	enemy.defeated.connect(_on_enemy_defeated)
 	enemy.attack_visual.connect(_relay_attack_visual.bind(as_boss))
+	enemy.damage_received.connect(_relay_damage_number)
 
 
 func _on_enemy_defeated(enemy: EnemyActor, loot: Dictionary) -> void:
@@ -198,3 +199,8 @@ func _relay_attack_visual(from: Vector2, to: Vector2, color: Color, from_boss: b
 		_world.call("add_combat_line", from, to, color)
 	if from_boss:
 		boss_attacked.emit()
+
+
+func _relay_damage_number(world_position: Vector2, amount: float, boss_hit: bool) -> void:
+	if _world.has_method("add_damage_number"):
+		_world.call("add_damage_number", world_position, amount, boss_hit)

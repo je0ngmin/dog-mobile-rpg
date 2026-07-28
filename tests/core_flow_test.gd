@@ -27,14 +27,38 @@ func _ready() -> void:
 		main.party[0].definition == main.actor_catalog.character_at(0),
 		"플레이어 능력치와 이미지는 ActorDefinition에서 읽어야 합니다."
 	)
+	var bori_definition: ActorDefinition = main.actor_catalog.character_at(0)
+	var bori_values: Vector2 = main._character_combat_values(bori_definition, 1)
+	_check(
+		bori_definition.base_health == 180_000.0
+		and bori_definition.base_attack == 14_000.0,
+		"초기 캐릭터부터 HP와 공격력이 만 단위 이상이어야 합니다."
+	)
+	_check(
+		GameState.format_large_number(int(bori_values.x)) == "18만"
+		and GameState.format_large_number(int(bori_values.y)) == "1.4만",
+		"캐릭터 카드에서 대형 전투 수치를 한글 단위로 표시할 수 있어야 합니다."
+	)
 	var resource_enemy := main.enemy_scene.instantiate() as EnemyActor
 	main.world.add_child(resource_enemy)
 	resource_enemy.configure(2, false, main.actor_catalog.normal_enemy_for_stage(2))
+	var damage_events: Array[float] = []
+	resource_enemy.damage_received.connect(
+		func(_position: Vector2, amount: float, _boss_hit: bool) -> void:
+			damage_events.append(amount)
+	)
+	resource_enemy.health.take_damage(12.0)
 	_check(
 		resource_enemy.definition == main.actor_catalog.normal_enemy_for_stage(2)
 		and resource_enemy.display_name == "화염 슬라임",
 		"일반 몬스터가 스테이지별 ActorDefinition을 사용해야 합니다."
 	)
+	_check(
+		resource_enemy.definition.base_health >= 30_000.0
+		and resource_enemy.definition.base_attack >= 4_000.0,
+		"몬스터 체력과 공격력도 확대된 전투 수치를 사용해야 합니다."
+	)
+	_check(damage_events.size() == 1 and is_equal_approx(damage_events[0], 12.0), "몬스터 피격 시 데미지 표시 신호가 발생해야 합니다.")
 	resource_enemy.configure(2, true, main.actor_catalog.boss_for_stage(2))
 	_check(
 		resource_enemy.definition == main.actor_catalog.boss_for_stage(2)
@@ -42,6 +66,16 @@ func _ready() -> void:
 		"보스가 스테이지별 ActorDefinition을 사용해야 합니다."
 	)
 	resource_enemy.queue_free()
+	_check(main.world.format_damage_number(9999.0) == "9,999", "1만 미만 데미지는 천 단위 쉼표로 표시해야 합니다.")
+	_check(main.world.format_damage_number(12_000.0) == "1.2만", "큰 데미지는 만 단위로 축약해야 합니다.")
+	_check(main.world.format_damage_number(100_000_000.0) == "1억", "더 큰 데미지는 억 단위로 축약해야 합니다.")
+	var damage_label: Label = main.world.add_damage_number(Vector2(500.0, 320.0), 12_000.0)
+	var damage_start_y: float = damage_label.position.y
+	_check(damage_label.text == "1.2만", "데미지 텍스트에 축약된 수치가 표시되어야 합니다.")
+	await get_tree().create_timer(0.2).timeout
+	_check(damage_label.position.y < damage_start_y, "데미지 텍스트는 아래에서 위로 올라가야 합니다.")
+	await get_tree().create_timer(0.75).timeout
+	_check(not is_instance_valid(damage_label), "데미지 텍스트는 상승 후 페이드아웃되어 제거되어야 합니다.")
 	_check(get_tree().get_nodes_in_group("party_speech_bubble").size() == 1, "원정대 말풍선은 동료 수와 관계없이 하나만 있어야 합니다.")
 	_check(main.party_speech_bubble.messages != null, "원정대 대사는 편집 가능한 Resource로 연결되어야 합니다.")
 	_check(main.party_speech_bubble.messages.normal_messages.size() >= 8, "평상시 원정대 대사가 충분히 구성되어야 합니다.")
@@ -125,7 +159,7 @@ func _ready() -> void:
 	main._show_message("일반 메시지")
 	_check(main.message_label.visible and main._message_text_effect == null, "다음 일반 메시지에서는 기본 Label로 복귀해야 합니다.")
 
-	GameState.gold = 10_000
+	GameState.gold = 10_000_000
 	GameState.resources_changed.emit()
 	_check(GameState.purchase_character(1), "두 번째 캐릭터를 구매할 수 있어야 합니다.")
 	_check(main.party.size() == 2, "구매한 캐릭터가 즉시 편성되어야 합니다.")
@@ -134,6 +168,9 @@ func _ready() -> void:
 	_check(GameState.format_large_number(1200) == "1,200", "천 단위 골드는 쉼표로 표시해야 합니다.")
 	_check(GameState.format_large_number(12_000) == "1.2만", "만 단위 골드를 축약 표시해야 합니다.")
 	_check(GameState.format_large_number(100_000_000) == "1억", "억 단위 골드를 축약 표시해야 합니다.")
+	_check(GameState.gold_reward_for_stage(1) == 120_000, "1-1 일반 골드 보상은 12만G부터 시작해야 합니다.")
+	_check(GameState.gold_reward_for_stage(1, true) == 1_440_000, "1-1 보스 골드 보상은 144만G부터 시작해야 합니다.")
+	_check(GameState.character_upgrade_cost(0) >= 500_000, "캐릭터 강화 비용도 확대된 골드 경제에 맞아야 합니다.")
 	var gold_increment_before := GameState.gold_skill_next_increment()
 	_check(GameState.upgrade_account_skill(0), "골드 증가 스킬을 강화할 수 있어야 합니다.")
 	_check(GameState.gold_skill_next_increment() < gold_increment_before, "골드 스킬의 레벨별 증가폭은 감소해야 합니다.")
