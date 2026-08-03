@@ -2,7 +2,7 @@
 
 강아지들을 주인공으로 적들과 싸워 이기는 방치형 RPG 게임입니다.
 
-**게임 플레이:** [https://je0ngmin.github.io/dog-mobile-rpg/](https://je0ngmin.github.io/dog-rpg-nan2026/)
+**게임 플레이:** https://je0ngmin.github.io/dog-rpg-nan2026/
 
 ## 에셋 출처
  * **게임 엔진**
