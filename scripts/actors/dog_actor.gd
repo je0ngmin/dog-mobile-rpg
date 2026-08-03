@@ -126,10 +126,11 @@ func _apply_role_stats(multiplier: float = 1.0, upgrade_level: int = 1, preserve
 	var health_upgrade := pow(1.0 + definition.health_per_upgrade_percent / 100.0, upgrade_count)
 	var attack_upgrade := pow(1.0 + definition.attack_per_upgrade_percent / 100.0, upgrade_count)
 	var skill_upgrade := pow(1.0 + definition.skill_per_upgrade_percent / 100.0, upgrade_count)
+	var cooldown_multiplier := GameState.character_attack_cooldown_multiplier(upgrade_level)
 	health.configure(definition.base_health * multiplier * health_upgrade)
 	attack.configure(
 		definition.base_attack * multiplier * attack_upgrade,
-		definition.attack_cooldown,
+		definition.attack_cooldown / cooldown_multiplier,
 		definition.attack_range
 	)
 	skill.skill_name = definition.skill_name

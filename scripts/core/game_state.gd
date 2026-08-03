@@ -7,11 +7,16 @@ signal character_roster_changed(character_index: int)
 signal account_skills_changed(skill_index: int)
 
 const SAVE_PATH := "user://dog_rpg_save.json"
+const FINAL_STAGE := 15
 const OFFLINE_CAP_SECONDS := 8 * 60 * 60
 const MAX_GOLD := 8_000_000_000_000_000_000
 const LARGE_NUMBER_UNITS := ["", "만", "억", "조", "경"]
 const DEFAULT_BGM_VOLUME_DB := -8.0
 const DEFAULT_SFX_VOLUME_DB := -5.0
+const ATTACK_COOLDOWN_REDUCTION_PER_CHARACTER_LEVEL := 0.3
+const MAX_CHARACTER_ATTACK_COOLDOWN_REDUCTION := 15.0
+const DEBUG_FINAL_STAGE_GOLD := 1_000_000_000
+const DEBUG_CHARACTER_LEVEL := 50
 
 var gold: int = 0
 var parts: int = 0
@@ -50,6 +55,27 @@ func account_level_gain_percent(level: int) -> float:
 	if level <= 51:
 		return 2.0
 	return 1.0
+
+
+func character_attack_cooldown_reduction_percent(level: int) -> float:
+	return minf(
+		float(maxi(level - 1, 0)) * ATTACK_COOLDOWN_REDUCTION_PER_CHARACTER_LEVEL,
+		MAX_CHARACTER_ATTACK_COOLDOWN_REDUCTION
+	)
+
+
+func character_attack_cooldown_multiplier(level: int) -> float:
+	return 1.0 - character_attack_cooldown_reduction_percent(level) / 100.0
+
+
+func apply_debug_final_stage_loadout() -> void:
+	gold = DEBUG_FINAL_STAGE_GOLD
+	for character_index in character_purchased.size():
+		character_purchased[character_index] = true
+		character_levels[character_index] = DEBUG_CHARACTER_LEVEL
+	resources_changed.emit()
+	for character_index in character_purchased.size():
+		character_roster_changed.emit(character_index)
 
 
 func add_experience(amount: int) -> void:
@@ -232,7 +258,7 @@ func defense_skill_next_increment() -> float:
 
 
 func unlock_stage(stage_number: int) -> void:
-	highest_stage = maxi(highest_stage, stage_number)
+	highest_stage = clampi(maxi(highest_stage, stage_number), 1, FINAL_STAGE)
 	save_game()
 
 
@@ -271,7 +297,7 @@ func load_game() -> void:
 	parts = int(data.get("parts", 0))
 	player_level = int(data.get("player_level", 1))
 	experience = int(data.get("experience", 0))
-	highest_stage = int(data.get("highest_stage", 1))
+	highest_stage = clampi(int(data.get("highest_stage", 1)), 1, FINAL_STAGE)
 	last_saved_unix = int(data.get("last_saved_unix", Time.get_unix_time_from_system()))
 	bgm_volume_db = clampf(float(data.get("bgm_volume_db", DEFAULT_BGM_VOLUME_DB)), -40.0, 0.0)
 	sfx_volume_db = clampf(float(data.get("sfx_volume_db", DEFAULT_SFX_VOLUME_DB)), -40.0, 0.0)

@@ -7,7 +7,7 @@ const AREA_BACKGROUND_PATHS := [
 	"res://sprites/backgrounds/BG003.png",
 ]
 
-@export_range(1, 100, 1) var stages_per_area: int = 10
+@export_range(1, 100, 1) var stages_per_area: int = 5
 @export var target_size: Vector2 = Vector2(1200.0, 675.0)
 
 var _loaded_area_index: int = -1

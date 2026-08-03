@@ -22,6 +22,7 @@ extends Node
 @onready var offline_panel: PanelContainer = $UI/OfflinePanel
 @onready var offline_label: Label = $UI/OfflinePanel/Margin/VBox/Reward
 @onready var settings_button: Button = $UI/SettingsButton
+@onready var debug_stage_button: Button = $UI/DebugStageButton
 @onready var settings_panel: PanelContainer = $UI/SettingsPanel
 @onready var bgm_slider: HSlider = $UI/SettingsPanel/Margin/VBox/BGMSlider
 @onready var sfx_slider: HSlider = $UI/SettingsPanel/Margin/VBox/SFXSlider
@@ -30,6 +31,8 @@ extends Node
 @onready var delete_data_button: Button = $UI/SettingsPanel/Margin/VBox/DeleteData
 @onready var delete_data_confirmation: ConfirmationDialog = $UI/DeleteDataConfirmation
 @onready var stage_background: Sprite2D = $World/Camera2D/Background
+@onready var game_clear_overlay: ColorRect = $UI/GameClearOverlay
+@onready var game_clear_replay_button: Button = $UI/GameClearOverlay/ClearPanel/Margin/VBox/Replay
 @onready var gold_effects: Node2D = $GoldEffects/Coins
 @onready var stage_transition_overlay: ColorRect = $StageTransition/Overlay
 @onready var boss_atmosphere_overlay: ColorRect = $BossAtmosphere/Overlay
@@ -63,6 +66,7 @@ var _auto_revive_active: bool = false
 
 
 func _ready() -> void:
+	debug_stage_button.visible = OS.is_debug_build()
 	game_audio.set_bgm_volume(GameState.bgm_volume_db)
 	game_audio.set_sfx_volume(GameState.sfx_volume_db)
 	bgm_slider.set_value_no_signal(GameState.bgm_volume_db)
@@ -87,6 +91,7 @@ func _ready() -> void:
 	stage_manager.party_defeated.connect(_on_party_defeated)
 	stage_manager.party_member_defeated.connect(_on_party_member_defeated)
 	stage_manager.boss_defeated.connect(_on_boss_defeated_dialogue)
+	stage_manager.game_cleared.connect(_on_game_cleared)
 	stage_manager.combat_message.connect(_show_message)
 	stage_manager.combat_message.connect(_add_event_log)
 	GameState.resources_changed.connect(_refresh_resources)
@@ -97,6 +102,7 @@ func _ready() -> void:
 	character_button.pressed.connect(_open_character_panel)
 	skill_button.pressed.connect(_open_skill_panel)
 	settings_button.pressed.connect(_open_settings_panel)
+	debug_stage_button.pressed.connect(_on_debug_stage_button_pressed)
 	$UI/CharacterPanel/Margin/VBox/Close.pressed.connect(character_panel.hide)
 	$UI/SkillPanel/Margin/VBox/Close.pressed.connect(skill_panel.hide)
 	$UI/OfflinePanel/Margin/VBox/Close.pressed.connect(offline_panel.hide)
@@ -107,15 +113,18 @@ func _ready() -> void:
 	sfx_slider.drag_ended.connect(_on_audio_slider_drag_ended)
 	delete_data_button.pressed.connect(_on_delete_data_requested)
 	delete_data_confirmation.confirmed.connect(_delete_data_and_restart)
+	game_clear_replay_button.pressed.connect(_on_game_clear_replay_pressed)
 	for ui_button: Button in [
 		character_button,
 		skill_button,
 		settings_button,
+		debug_stage_button,
 		$UI/CharacterPanel/Margin/VBox/Close,
 		$UI/SkillPanel/Margin/VBox/Close,
 		$UI/OfflinePanel/Margin/VBox/Close,
 		$UI/SettingsPanel/Margin/VBox/Close,
 		delete_data_button,
+		game_clear_replay_button,
 	]:
 		ui_button.pressed.connect(game_audio.play_ui)
 	_refresh_resources()
@@ -232,8 +241,8 @@ func _refresh_resources() -> void:
 
 
 func _on_stage_changed(stage_number: int) -> void:
-	var area := ((stage_number - 1) / 10) + 1
-	var local_stage := ((stage_number - 1) % 10) + 1
+	var area := ((stage_number - 1) / 5) + 1
+	var local_stage := ((stage_number - 1) % 5) + 1
 	stage_background.set_stage(stage_number)
 	stage_label.text = "버려진 주택가  %d-%d" % [area, local_stage]
 	for character_index in party_by_index:
@@ -404,6 +413,29 @@ func _on_party_member_defeated(dog: DogActor) -> void:
 
 func _on_boss_defeated_dialogue() -> void:
 	party_speech_bubble.show_boss_defeated()
+
+
+func _on_game_cleared(_stage_number: int) -> void:
+	character_panel.hide()
+	skill_panel.hide()
+	settings_panel.hide()
+	offline_panel.hide()
+	game_clear_overlay.show()
+	_add_event_log("3-5 최종 보스 격파 · 게임 클리어!", Color("#ffe06a"))
+
+
+func _on_game_clear_replay_pressed() -> void:
+	game_clear_overlay.hide()
+	stage_manager.replay_cleared_stage()
+	party_speech_bubble.show_normal(true)
+	_show_message("3-5 반복 원정을 시작합니다!")
+
+
+func _on_debug_stage_button_pressed() -> void:
+	game_clear_overlay.hide()
+	GameState.apply_debug_final_stage_loadout()
+	stage_manager.debug_jump_to_stage(StageManager.MAX_STAGE)
+	_show_message("디버그: 3-5 · 전원 Lv.50 · 골드 10억G")
 
 
 func _on_boss_battle_started() -> void:
@@ -738,14 +770,15 @@ func _rebuild_character_rows() -> void:
 		if GameState.character_purchased[character_index]:
 			var character_level: int = GameState.character_levels[character_index]
 			var combat_values := _character_combat_values(definition, character_level)
+			var cooldown_reduction := GameState.character_attack_cooldown_reduction_percent(character_level)
 			var total_bonus: float = (
 				(pow(1.0 + definition.upgrade_percent / 100.0, character_level - 1) - 1.0) * 100.0
 			)
-			level_text.text = "Lv.%d\nHP %s · 공격력 %s\n%s +%.1f%% · 레벨당 +%.1f%%" % [
+			level_text.text = "Lv.%d\nHP %s · 공격력 %s\n%s +%.1f%% · 레벨당 +%.1f%%\n공격 쿨타임 -%.1f%%" % [
 				character_level,
 				GameState.format_large_number(int(round(combat_values.x))),
 				GameState.format_large_number(int(round(combat_values.y))),
-				definition.upgrade_stat_name, total_bonus, definition.upgrade_percent,
+				definition.upgrade_stat_name, total_bonus, definition.upgrade_percent, cooldown_reduction,
 			]
 			var upgrade_cost: int = GameState.character_upgrade_cost(character_index)
 			action.text = "레벨 강화  %sG" % GameState.format_large_number(upgrade_cost)
@@ -790,14 +823,18 @@ func _on_character_action(character_index: int) -> void:
 		return
 	if GameState.character_purchased[character_index]:
 		if GameState.upgrade_character(character_index):
-			_show_message("%s 강화 완료! %s +%.1f%%" % [
-				definition.display_name, definition.upgrade_stat_name, definition.upgrade_percent,
+			_show_message("%s 강화! %s +%.1f%% · 공격 쿨타임 -%.1f%%" % [
+				definition.display_name,
+				definition.upgrade_stat_name,
+				definition.upgrade_percent,
+				GameState.ATTACK_COOLDOWN_REDUCTION_PER_CHARACTER_LEVEL,
 			])
-			_add_event_log("%s Lv.%d 강화 · %s +%.1f%%" % [
+			_add_event_log("%s Lv.%d · %s +%.1f%% · 공격 쿨타임 -%.1f%%" % [
 				definition.display_name,
 				GameState.character_levels[character_index],
 				definition.upgrade_stat_name,
 				definition.upgrade_percent,
+				GameState.ATTACK_COOLDOWN_REDUCTION_PER_CHARACTER_LEVEL,
 			], Color("#7de7ff"))
 	else:
 		if GameState.purchase_character(character_index):

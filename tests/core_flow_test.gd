@@ -63,17 +63,25 @@ func _ready() -> void:
 		main.stage_background.texture.resource_path.ends_with("BG001.png"),
 		"1-n 스테이지에는 BG001.png를 사용해야 합니다."
 	)
-	main._on_stage_changed(11)
+	main._on_stage_changed(6)
 	_check(
 		main.stage_background.texture.resource_path.ends_with("BG002.png"),
 		"2-n 스테이지에는 BG002.png를 사용해야 합니다."
 	)
-	main._on_stage_changed(21)
+	main._on_stage_changed(11)
 	_check(
 		main.stage_background.texture.resource_path.ends_with("BG003.png"),
 		"3-n 스테이지에는 BG003.png를 사용해야 합니다."
 	)
 	main._on_stage_changed(1)
+	_check(
+		main.debug_stage_button.position.y > main.settings_button.position.y + main.settings_button.size.y,
+		"3-5 디버그 이동 버튼은 설정 버튼 바로 아래에 있어야 합니다."
+	)
+	_check(
+		main.debug_stage_button.visible == OS.is_debug_build(),
+		"3-5 이동 버튼은 디버그 빌드에서만 표시되어야 합니다."
+	)
 	_check(
 		GameState.account_level_stat_multiplier(10) > 1.3,
 		"원정대 레벨업은 기존 선형 성장보다 체력과 공격력이 확실히 상승해야 합니다."
@@ -98,6 +106,34 @@ func _ready() -> void:
 		main.party[0].definition == main.actor_catalog.character_at(0),
 		"플레이어 능력치와 이미지는 ActorDefinition에서 읽어야 합니다."
 	)
+	main.stage_manager.debug_jump_to_stage(StageManager.MAX_STAGE)
+	var final_boss := main.enemy_scene.instantiate() as EnemyActor
+	main.world.add_child(final_boss)
+	final_boss.configure(StageManager.MAX_STAGE, true, main.actor_catalog.boss_for_stage(StageManager.MAX_STAGE))
+	var clear_events: Array[int] = []
+	var final_transition_events: Array[int] = []
+	main.stage_manager.game_cleared.connect(func(stage: int) -> void: clear_events.append(stage))
+	main.stage_manager.stage_transition_requested.connect(
+		func(stage: int) -> void: final_transition_events.append(stage)
+	)
+	main.stage_manager.boss_active = true
+	main.stage_manager._on_enemy_defeated(final_boss, {})
+	_check(
+		clear_events == [StageManager.MAX_STAGE]
+		and final_transition_events.is_empty()
+		and main.game_clear_overlay.visible,
+		"3-5 보스 처치 시 다음 스테이지 대신 게임 클리어 창이 떠야 합니다."
+	)
+	main._on_game_clear_replay_pressed()
+	_check(
+		not main.game_clear_overlay.visible
+		and main.stage_manager.current_stage == StageManager.MAX_STAGE
+		and not main.stage_manager.progression_paused,
+		"클리어 창에서 3-5 반복 원정을 시작할 수 있어야 합니다."
+	)
+	main.stage_manager.debug_jump_to_stage(1)
+	for log_entry in main.event_log_entries.get_children():
+		log_entry.free()
 	var dog_hit_source := Node2D.new()
 	main.world.add_child(dog_hit_source)
 	dog_hit_source.global_position = main.party[0].global_position + Vector2(100.0, 0.0)
@@ -127,6 +163,18 @@ func _ready() -> void:
 		and GameState.format_large_number(int(bori_values.y)) == "1.4만",
 		"캐릭터 카드에서 대형 전투 수치를 한글 단위로 표시할 수 있어야 합니다."
 	)
+	var bori_attack_speed_at_level_1: float = main.party[0].attack.attacks_per_second
+	main.party[0].apply_progression(GameState.player_level, 2)
+	_check(
+		main.party[0].attack.attacks_per_second > bori_attack_speed_at_level_1
+		and is_equal_approx(GameState.character_attack_cooldown_reduction_percent(2), 0.3),
+		"강아지 캐릭터 레벨업 시 공격 쿨타임이 레벨당 조금씩 감소해야 합니다."
+	)
+	_check(
+		is_equal_approx(GameState.character_attack_cooldown_reduction_percent(1000), 15.0),
+		"공격 쿨타임 감소는 고레벨에서 15%를 넘으면 안 됩니다."
+	)
+	main.party[0].apply_progression(GameState.player_level, 1)
 	var resource_enemy := main.enemy_scene.instantiate() as EnemyActor
 	main.world.add_child(resource_enemy)
 	resource_enemy.configure(2, false, main.actor_catalog.normal_enemy_for_stage(2))
@@ -394,6 +442,24 @@ func _ready() -> void:
 	_check(not main.boss_atmosphere_overlay.visible, "보스 종료 후 비네트 오버레이가 사라져야 합니다.")
 	main._on_boss_defeated_dialogue()
 	_check(main.party_speech_bubble.current_state == 2, "보스 처치 시 보스 처치 대사를 표시해야 합니다.")
+
+	var highest_stage_before_debug: int = GameState.highest_stage
+	main._on_debug_stage_button_pressed()
+	_check(
+		main.stage_manager.current_stage == StageManager.MAX_STAGE
+		and main.stage_label.text.contains("3-5")
+		and GameState.highest_stage == highest_stage_before_debug,
+		"디버그 버튼은 저장된 최고 스테이지를 바꾸지 않고 3-5로 이동해야 합니다."
+	)
+	_check(
+		GameState.gold == 1_000_000_000
+		and GameState.character_purchased == [true, true, true]
+		and GameState.character_levels == [50, 50, 50]
+		and main.party_by_index.size() == 3,
+		"3-5 디버그 이동 시 골드 10억과 모든 Lv.50 캐릭터를 즉시 지급해야 합니다."
+	)
+	for dog in main.party:
+		_check(dog.character_level == 50 and not dog.health.is_dead, "디버그 원정대 전원은 Lv.50 생존 상태여야 합니다.")
 
 	GameState.gold = 123_456
 	GameState.save_game()

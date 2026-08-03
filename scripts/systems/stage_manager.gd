@@ -14,7 +14,10 @@ signal stage_transition_requested(next_stage: int)
 signal party_defeated
 signal party_member_defeated(dog: DogActor)
 signal boss_defeated
+signal game_cleared(stage_number: int)
 signal combat_message(text: String)
+
+const MAX_STAGE := 15
 
 @export var enemy_scene: PackedScene
 @export var actor_catalog: ActorCatalog
@@ -36,7 +39,7 @@ func setup(world: Node2D, party: Array[DogActor], starting_stage: int) -> void:
 	_world = world
 	_party = party
 	_leader = party[0]
-	current_stage = maxi(starting_stage, 1)
+	current_stage = clampi(starting_stage, 1, MAX_STAGE)
 	for dog in _party:
 		if not dog.dog_defeated.is_connected(_on_dog_defeated):
 			dog.dog_defeated.connect(_on_dog_defeated)
@@ -147,9 +150,14 @@ func _on_enemy_defeated(enemy: EnemyActor, loot: Dictionary) -> void:
 		boss_active = false
 		boss_battle_ended.emit()
 		progression_paused = true
-		_pending_stage = current_stage + 1
-		stage_transition_requested.emit(_pending_stage)
-		combat_message.emit("보스를 격파했다!")
+		if current_stage >= MAX_STAGE:
+			_pending_stage = 0
+			combat_message.emit("최종 보스를 격파했다!")
+			game_cleared.emit(current_stage)
+		else:
+			_pending_stage = current_stage + 1
+			stage_transition_requested.emit(_pending_stage)
+			combat_message.emit("보스를 격파했다!")
 	else:
 		kills += 1
 	progress_changed.emit(kills, enemies_before_boss, boss_active)
@@ -195,6 +203,28 @@ func _heal_surviving_party() -> void:
 func _clear_enemies() -> void:
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		(enemy as Node).queue_free()
+
+
+func debug_jump_to_stage(stage_number: int) -> void:
+	var was_boss_battle := boss_active
+	current_stage = clampi(stage_number, 1, MAX_STAGE)
+	_pending_stage = 0
+	kills = 0
+	boss_active = false
+	progression_paused = false
+	_spawn_timer = 0.5
+	_clear_enemies()
+	_revive_party()
+	if was_boss_battle:
+		boss_battle_ended.emit()
+	stage_changed.emit(current_stage)
+	progress_changed.emit(kills, enemies_before_boss, boss_active)
+
+
+func replay_cleared_stage() -> void:
+	if current_stage != MAX_STAGE:
+		return
+	debug_jump_to_stage(MAX_STAGE)
 
 
 func _relay_attack_visual(from: Vector2, to: Vector2, color: Color, from_boss: bool = false) -> void:
