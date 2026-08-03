@@ -1,7 +1,7 @@
 class_name HealthComponent
 extends Node
 
-signal damaged(amount: float)
+signal damaged(amount: float, source: Node2D)
 signal healed(amount: float)
 signal died
 signal health_changed(current: float, maximum: float)
@@ -23,13 +23,13 @@ func configure(value: float) -> void:
 	health_changed.emit(current_health, maximum_health)
 
 
-func take_damage(amount: float) -> void:
+func take_damage(amount: float, source: Node2D = null) -> void:
 	if is_dead:
 		return
 	var reduction_multiplier := 1.0 - clampf(damage_reduction_percent, 0.0, 90.0) / 100.0
 	var applied := maxf(amount, 0.0) * reduction_multiplier
 	current_health = maxf(current_health - applied, 0.0)
-	damaged.emit(applied)
+	damaged.emit(applied, source)
 	health_changed.emit(current_health, maximum_health)
 	if current_health <= 0.0:
 		is_dead = true

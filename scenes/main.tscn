@@ -6,7 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/actors/dog.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/actors/enemy.tscn" id="5"]
 [ext_resource type="FontVariation" uid="uid://b5uia6v4r5uu8" path="res://fonts/font_variation.tres" id="6_tefeu"]
-[ext_resource type="Texture2D" uid="uid://liwdi1k4qons" path="res://sprites/backgrounds/BG001.png" id="7_bg001"]
+[ext_resource type="Script" uid="uid://66lag8anbpo5" path="res://scripts/world/stage_background.gd" id="7_stage_background"]
 [ext_resource type="Texture2D" uid="uid://bmy17gavb8m28" path="res://sprites/gold.png" id="7_tipki"]
 [ext_resource type="FontVariation" uid="uid://lditlvokrwg1" path="res://fonts/font_gold.tres" id="8_choun"]
 [ext_resource type="Texture2D" uid="uid://l0thkq55rrnt" path="res://sprites/dogs/dog001.png" id="8_dog_icon"]
@@ -14,6 +14,7 @@
 [ext_resource type="Script" uid="uid://dvgfyqqx4vscn" path="res://scripts/components/party_speech_bubble.gd" id="10_speech"]
 [ext_resource type="Resource" uid="uid://3wg8ay6120x4" path="res://resources/party_dialogue_messages.tres" id="11_dialogue"]
 [ext_resource type="Resource" path="res://resources/actors/actor_catalog.tres" id="12_actor_catalog"]
+[ext_resource type="Script" uid="uid://c5aeun7er5uun" path="res://scripts/systems/game_audio.gd" id="13_game_audio"]
 
 [sub_resource type="Shader" id="Shader_boss_atmosphere"]
 code = "shader_type canvas_item;
@@ -161,6 +162,9 @@ dog_scene = ExtResource("4")
 enemy_scene = ExtResource("5")
 actor_catalog = ExtResource("12_actor_catalog")
 
+[node name="GameAudio" type="Node" parent="." unique_id=264730195]
+script = ExtResource("13_game_audio")
+
 [node name="World" type="Node2D" parent="." unique_id=146596248]
 script = ExtResource("2")
 
@@ -170,7 +174,7 @@ position = Vector2(430, 324)
 [node name="Background" type="Sprite2D" parent="World/Camera2D" unique_id=1104239154]
 z_index = -100
 z_as_relative = false
-texture = ExtResource("7_bg001")
+script = ExtResource("7_stage_background")
 
 [node name="PartySpeechBubble" type="Control" parent="World" unique_id=1941260088]
 z_index = 30
@@ -347,6 +351,107 @@ theme_override_styles/hover = SubResource("StyleMenuButtonHover")
 text = "스킬"
 icon = ExtResource("7_tipki")
 expand_icon = true
+
+[node name="SettingsButton" type="Button" parent="UI" unique_id=653762144]
+z_index = 5
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -166.0
+offset_top = 18.0
+offset_right = -24.0
+offset_bottom = 68.0
+grow_horizontal = 0
+theme_override_fonts/font = ExtResource("6_tefeu")
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("StyleMenuButton")
+theme_override_styles/pressed = SubResource("StyleMenuButtonPressed")
+theme_override_styles/hover = SubResource("StyleMenuButtonHover")
+text = "설정"
+
+[node name="SettingsPanel" type="PanelContainer" parent="UI" unique_id=2005394798]
+visible = false
+z_index = 50
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -430.0
+offset_top = 84.0
+offset_right = -24.0
+offset_bottom = 484.0
+grow_horizontal = 0
+theme_override_styles/panel = SubResource("StylePanel")
+
+[node name="Margin" type="MarginContainer" parent="UI/SettingsPanel" unique_id=288960084]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="UI/SettingsPanel/Margin" unique_id=1563864387]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="UI/SettingsPanel/Margin/VBox" unique_id=1390540514]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.79, 0.36, 1)
+theme_override_font_sizes/font_size = 25
+text = "설정"
+horizontal_alignment = 1
+
+[node name="BGMValue" type="Label" parent="UI/SettingsPanel/Margin/VBox" unique_id=380390696]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "BGM  -8 dB"
+
+[node name="BGMSlider" type="HSlider" parent="UI/SettingsPanel/Margin/VBox" unique_id=1395098583]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+min_value = -40.0
+max_value = 0.0
+value = -8.0
+
+[node name="SFXValue" type="Label" parent="UI/SettingsPanel/Margin/VBox" unique_id=1282656041]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "FX 사운드  -5 dB"
+
+[node name="SFXSlider" type="HSlider" parent="UI/SettingsPanel/Margin/VBox" unique_id=1593702956]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+min_value = -40.0
+max_value = 0.0
+value = -5.0
+
+[node name="Warning" type="Label" parent="UI/SettingsPanel/Margin/VBox" unique_id=1212046012]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.95, 0.55, 0.55, 1)
+text = "데이터 삭제 시 모든 진행 상황이 사라집니다."
+horizontal_alignment = 1
+vertical_alignment = 2
+
+[node name="DeleteData" type="Button" parent="UI/SettingsPanel/Margin/VBox" unique_id=1682609519]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.45, 0.45, 1)
+theme_override_font_sizes/font_size = 18
+text = "데이터 삭제 후 재시작"
+
+[node name="Close" type="Button" parent="UI/SettingsPanel/Margin/VBox" unique_id=1406902819]
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+text = "닫기"
+
+[node name="DeleteDataConfirmation" type="ConfirmationDialog" parent="UI" unique_id=260551526]
+title = "데이터 삭제"
+initial_position = 1
+size = Vector2i(440, 210)
+ok_button_text = "삭제 후 재시작"
+dialog_text = "모든 진행 데이터가 영구적으로 삭제됩니다.
+정말 삭제할까요?"
+cancel_button_text = "취소"
 
 [node name="CharacterPanel" type="PanelContainer" parent="UI" unique_id=495756893]
 visible = false

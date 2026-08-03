@@ -18,6 +18,62 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 
+	_check(main.game_audio != null, "게임 사운드 매니저가 Main에 연결되어야 합니다.")
+	_check(main.game_audio.has_method("play_attack"), "기본 공격 효과음을 재생할 수 있어야 합니다.")
+	_check(main.game_audio.has_method("play_skill"), "스킬 효과음을 재생할 수 있어야 합니다.")
+	_check(main.game_audio.has_method("play_coin"), "골드 획득 효과음을 재생할 수 있어야 합니다.")
+	_check(main.game_audio.has_method("play_boss_warning"), "보스 경고 효과음을 재생할 수 있어야 합니다.")
+	var bgm_player := main.game_audio.get_node_or_null("BGM") as AudioStreamPlayer
+	_check(bgm_player != null and bgm_player.playing, "BGM이 게임 시작과 함께 재생되어야 합니다.")
+	_check(bgm_player != null and bgm_player.volume_db <= -8.0, "BGM은 효과음을 가리지 않도록 낮은 음량이어야 합니다.")
+	_check(
+		bgm_player != null
+		and bgm_player.stream is AudioStreamMP3
+		and (bgm_player.stream as AudioStreamMP3).loop,
+		"BGM은 끊김 없이 반복 재생되어야 합니다."
+	)
+	_check(
+		main.settings_button.anchor_left == 1.0
+		and main.settings_button.position.x > 900.0,
+		"설정 버튼은 화면 위쪽 오른쪽 끝에 배치되어야 합니다."
+	)
+	main._open_settings_panel()
+	_check(main.settings_panel.visible, "설정 버튼을 누르면 설정 패널이 열려야 합니다.")
+	_check(main.delete_data_confirmation != null, "데이터 삭제 전에 확인 팝업을 제공해야 합니다.")
+	main._on_delete_data_requested()
+	_check(main.delete_data_confirmation.visible, "데이터 삭제 버튼을 누르면 확인 팝업이 열려야 합니다.")
+	main.delete_data_confirmation.hide()
+	main._on_bgm_volume_changed(-20.0)
+	main._on_sfx_volume_changed(-18.0)
+	_check(
+		is_equal_approx(GameState.bgm_volume_db, -20.0)
+		and is_equal_approx(bgm_player.volume_db, -20.0),
+		"BGM 슬라이더 값이 저장 상태와 실제 BGM 플레이어에 즉시 적용되어야 합니다."
+	)
+	_check(
+		is_equal_approx(GameState.sfx_volume_db, -18.0)
+		and is_equal_approx(float(main.game_audio.master_sfx_volume_db), -18.0),
+		"FX 슬라이더 값이 효과음 볼륨에 즉시 적용되어야 합니다."
+	)
+	main._on_bgm_volume_changed(GameState.DEFAULT_BGM_VOLUME_DB)
+	main._on_sfx_volume_changed(GameState.DEFAULT_SFX_VOLUME_DB)
+	main.settings_panel.hide()
+	main._on_stage_changed(1)
+	_check(
+		main.stage_background.texture.resource_path.ends_with("BG001.jpg"),
+		"1-n 스테이지에는 BG001.jpg를 사용해야 합니다."
+	)
+	main._on_stage_changed(11)
+	_check(
+		main.stage_background.texture.resource_path.ends_with("BG002.jpg"),
+		"2-n 스테이지에는 BG002.jpg를 사용해야 합니다."
+	)
+	main._on_stage_changed(21)
+	_check(
+		main.stage_background.texture.resource_path.ends_with("BG003.jpg"),
+		"3-n 스테이지에는 BG003.jpg를 사용해야 합니다."
+	)
+	main._on_stage_changed(1)
 	_check(main.actor_catalog != null, "캐릭터·몬스터·보스 카탈로그가 Main에 연결되어야 합니다.")
 	_check(main.actor_catalog.characters.size() == 3, "플레이어 캐릭터 3종이 Resource로 등록되어야 합니다.")
 	_check(main.actor_catalog.normal_enemies.size() == 2, "일반 몬스터 2종이 Resource로 등록되어야 합니다.")
@@ -27,6 +83,23 @@ func _ready() -> void:
 		main.party[0].definition == main.actor_catalog.character_at(0),
 		"플레이어 능력치와 이미지는 ActorDefinition에서 읽어야 합니다."
 	)
+	var dog_hit_source := Node2D.new()
+	main.world.add_child(dog_hit_source)
+	dog_hit_source.global_position = main.party[0].global_position + Vector2(100.0, 0.0)
+	main.party[0].health.take_damage(1.0, dog_hit_source)
+	_check(
+		main.party[0].character_sprite.modulate.g < 0.5
+		and main.party[0]._hit_rotation_offset < 0.0,
+		"오른쪽 몬스터에게 맞은 강아지는 붉어지고 반대인 왼쪽으로 회전해야 합니다."
+	)
+	await get_tree().create_timer(0.32).timeout
+	_check(
+		absf(main.party[0]._hit_rotation_offset) < 0.01
+		and main.party[0].character_sprite.modulate.is_equal_approx(Color.WHITE),
+		"강아지 피격 효과는 반동 후 원래 색상과 회전으로 복귀해야 합니다."
+	)
+	main.party[0].health.restore_full()
+	dog_hit_source.free()
 	var bori_definition: ActorDefinition = main.actor_catalog.character_at(0)
 	var bori_values: Vector2 = main._character_combat_values(bori_definition, 1)
 	_check(
@@ -47,7 +120,10 @@ func _ready() -> void:
 		func(_position: Vector2, amount: float, _boss_hit: bool) -> void:
 			damage_events.append(amount)
 	)
-	resource_enemy.health.take_damage(12.0)
+	var hit_source := Node2D.new()
+	main.world.add_child(hit_source)
+	hit_source.global_position = resource_enemy.global_position + Vector2(-100.0, 0.0)
+	resource_enemy.health.take_damage(12.0, hit_source)
 	_check(
 		resource_enemy.definition == main.actor_catalog.normal_enemy_for_stage(2)
 		and resource_enemy.display_name == "화염 슬라임",
@@ -59,6 +135,18 @@ func _ready() -> void:
 		"몬스터 체력과 공격력도 확대된 전투 수치를 사용해야 합니다."
 	)
 	_check(damage_events.size() == 1 and is_equal_approx(damage_events[0], 12.0), "몬스터 피격 시 데미지 표시 신호가 발생해야 합니다.")
+	_check(
+		resource_enemy.enemy_sprite.modulate.g < 0.5
+		and resource_enemy._hit_rotation_offset > 0.0,
+		"왼쪽 플레이어에게 맞으면 몬스터가 붉어지고 반대인 오른쪽으로 회전해야 합니다."
+	)
+	await get_tree().create_timer(0.32).timeout
+	_check(
+		absf(resource_enemy._hit_rotation_offset) < 0.01
+		and resource_enemy.enemy_sprite.modulate.is_equal_approx(Color.WHITE),
+		"몬스터 피격 효과는 짧게 반동한 뒤 원래 색상과 회전으로 복귀해야 합니다."
+	)
+	hit_source.free()
 	resource_enemy.configure(2, true, main.actor_catalog.boss_for_stage(2))
 	_check(
 		resource_enemy.definition == main.actor_catalog.boss_for_stage(2)
@@ -145,6 +233,17 @@ func _ready() -> void:
 	)
 	_check(gold_target_canvas.distance_to(resource_center_canvas) < 0.01, "골드 이펙트의 도착점은 실제 골드 UI 중앙이어야 합니다.")
 	_check(main.resource_label.size.x < 240.0, "VBox 안의 골드 Label이 상단바 전체 폭으로 늘어나면 안 됩니다.")
+	main._on_progress_changed(1, 5, false)
+	await get_tree().create_timer(0.08).timeout
+	_check(
+		main.progress_bar.scale.y > 1.0
+		and main.progress_bar.pivot_offset.is_equal_approx(main.progress_bar.size * 0.5),
+		"보스 출현 게이지가 증가하면 중앙 기준으로 뽀용 확대되어야 합니다."
+	)
+	await get_tree().create_timer(0.4).timeout
+	_check(main.progress_bar.scale.is_equal_approx(Vector2.ONE), "게이지 뽀용 애니메이션 후 원래 크기로 복귀해야 합니다.")
+	main._on_progress_changed(0, 5, false)
+	_check(main._boss_progress_pulse_tween == null or not main._boss_progress_pulse_tween.is_running(), "게이지 초기화 시 뽀용 애니메이션을 재생하면 안 됩니다.")
 	main._on_progress_changed(5, 5, true)
 	await get_tree().process_frame
 	_check(not main.progress_label.visible, "보스 전투 중에는 고정 진행 문구를 숨겨야 합니다.")
@@ -248,6 +347,11 @@ func _ready() -> void:
 	_check(main.stage_transition_overlay.visible, "자동 부활을 시작하면 스테이지 전환 페이드가 표시되어야 합니다.")
 	await get_tree().create_timer(1.7).timeout
 	_check(not survivor.health.is_dead and not defeated.health.is_dead, "골드 부활 시 모든 캐릭터가 살아나야 합니다.")
+	_check(
+		absf(survivor._hit_rotation_offset) < 0.01
+		and survivor.character_sprite.modulate.is_equal_approx(Color.WHITE),
+		"부활한 강아지에게 이전 피격 색상이나 회전이 남으면 안 됩니다."
+	)
 	_check(main.stage_manager.kills == 0, "부활 시 현재 스테이지 진행도를 처음으로 되돌려야 합니다.")
 	_check(not main.stage_transition_overlay.visible, "자동 부활이 끝나면 페이드 오버레이가 사라져야 합니다.")
 
@@ -261,15 +365,29 @@ func _ready() -> void:
 	main._on_boss_battle_started()
 	await get_tree().create_timer(0.65).timeout
 	var atmosphere_material := main.boss_atmosphere_overlay.material as ShaderMaterial
+	_check(main.game_audio.is_boss_music_active(), "보스전 도입 시 전용 EDM BGM으로 전환되어야 합니다.")
+	_check(main.game_audio.current_bgm_mode() == &"boss", "페이드 후 실제 재생 곡이 보스 BGM이어야 합니다.")
 	_check(main.party_speech_bubble.current_state == 3, "보스 등장 시 보스 등장 대사를 표시해야 합니다.")
 	_check(main.boss_atmosphere_overlay.visible, "보스전에는 비네트 오버레이가 표시되어야 합니다.")
 	_check(float(atmosphere_material.get_shader_parameter("intensity")) > 0.9, "보스 비네트 강도가 부드럽게 증가해야 합니다.")
 	main._on_boss_battle_ended()
 	await get_tree().create_timer(0.85).timeout
+	_check(not main.game_audio.is_boss_music_active(), "보스전 종료 시 일반 BGM으로 돌아와야 합니다.")
+	_check(main.game_audio.current_bgm_mode() == &"normal", "보스전 종료 페이드 후 실제 일반 BGM이 재생되어야 합니다.")
 	_check(not main.boss_atmosphere_overlay.visible, "보스 종료 후 비네트 오버레이가 사라져야 합니다.")
 	main._on_boss_defeated_dialogue()
 	_check(main.party_speech_bubble.current_state == 2, "보스 처치 시 보스 처치 대사를 표시해야 합니다.")
 
+	GameState.gold = 123_456
+	GameState.save_game()
+	_check(FileAccess.file_exists(GameState.SAVE_PATH), "데이터 삭제 테스트 전에 저장 파일이 존재해야 합니다.")
+	_check(GameState.delete_save_data(), "설정의 데이터 삭제 기능이 저장 파일을 제거할 수 있어야 합니다.")
+	_check(
+		not FileAccess.file_exists(GameState.SAVE_PATH)
+		and GameState.gold == 0
+		and GameState.character_purchased == [true, false, false],
+		"데이터 삭제 후 저장 파일과 런타임 진행도가 모두 초기화되어야 합니다."
+	)
 	GameState.reset_progress()
 	if not _failed:
 		print("CORE_FLOW_TEST_OK")

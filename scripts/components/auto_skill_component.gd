@@ -23,7 +23,7 @@ func try_use(owner_actor: Node2D, target: Node2D, base_damage: float) -> bool:
 	var health := target.get_node_or_null("HealthComponent") as HealthComponent
 	if health == null or health.is_dead:
 		return false
-	health.take_damage(base_damage * damage_multiplier)
+	health.take_damage(base_damage * damage_multiplier, owner_actor)
 	_remaining = cooldown_seconds
 	skill_used.emit(skill_name, target)
 	return true

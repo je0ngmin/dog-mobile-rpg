@@ -18,5 +18,7 @@ func _initialize() -> void:
 			"character_purchased": [true, false, false],
 			"character_levels": [1, 1, 1],
 			"account_skill_levels": [1, 1, 1],
+			"bgm_volume_db": -8.0,
+			"sfx_volume_db": -5.0,
 		}))
 	quit()

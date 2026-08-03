@@ -28,11 +28,14 @@ var _body_color := Color("#d8a45d")
 var _animation_phase: float = 0.0
 var _squash_amount: float = 0.0
 var _rotation_amount: float = 0.0
+var _hit_rotation_offset: float = 0.0
+var _hit_visual_tween: Tween
 
 
 func _ready() -> void:
 	add_to_group("dogs")
 	health.died.connect(_on_died)
+	health.damaged.connect(_on_damaged)
 	health.health_changed.connect(_on_health_changed)
 	attack.attack_performed.connect(_on_attack)
 	skill.skill_used.connect(_on_skill)
@@ -107,6 +110,7 @@ func revive(at_position: Vector2) -> void:
 	process_mode = Node.PROCESS_MODE_INHERIT
 	health.restore_full()
 	skill.reset()
+	_reset_hit_reaction()
 	visual_pivot.scale = Vector2.ONE
 	visual_pivot.rotation = 0.0
 	queue_redraw()
@@ -157,6 +161,7 @@ func _find_nearest_enemy() -> Node2D:
 
 
 func _on_died() -> void:
+	_reset_hit_reaction()
 	visible = false
 	process_mode = Node.PROCESS_MODE_DISABLED
 	dog_defeated.emit(self)
@@ -168,6 +173,53 @@ func _on_attack(hit_target: Node, _damage: float) -> void:
 
 func _on_skill(_skill_name: String, hit_target: Node) -> void:
 	skill_visual.emit(global_position, (hit_target as Node2D).global_position, Color("#fff0a8"))
+
+
+func _on_damaged(_amount: float, source: Node2D) -> void:
+	if health.current_health <= 0.0:
+		return
+	_play_hit_reaction(source)
+
+
+func _play_hit_reaction(source: Node2D) -> void:
+	if _hit_visual_tween:
+		_hit_visual_tween.kill()
+	var away_direction := 1.0
+	if is_instance_valid(source):
+		away_direction = signf(global_position.x - source.global_position.x)
+		if is_zero_approx(away_direction):
+			away_direction = 1.0
+	var impact_rotation := away_direction * 0.2
+	_hit_rotation_offset = impact_rotation
+	character_sprite.modulate = Color(1.0, 0.22, 0.22, 1.0)
+	_hit_visual_tween = create_tween()
+	_hit_visual_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_hit_visual_tween.tween_method(
+		func(value: float) -> void: _hit_rotation_offset = value,
+		impact_rotation,
+		-impact_rotation * 0.2,
+		0.1
+	)
+	_hit_visual_tween.tween_method(
+		func(value: float) -> void: _hit_rotation_offset = value,
+		-impact_rotation * 0.2,
+		0.0,
+		0.16
+	).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_hit_visual_tween.parallel().tween_property(
+		character_sprite,
+		"modulate",
+		Color.WHITE,
+		0.2
+	)
+
+
+func _reset_hit_reaction() -> void:
+	if _hit_visual_tween:
+		_hit_visual_tween.kill()
+	_hit_visual_tween = null
+	_hit_rotation_offset = 0.0
+	character_sprite.modulate = Color.WHITE
 
 
 func _on_health_changed(_current: float, _maximum: float) -> void:
@@ -190,7 +242,7 @@ func _update_sprite_motion(delta: float, is_moving: bool, is_attacking: bool) ->
 	_rotation_amount = lerpf(_rotation_amount, target_rotation, minf(delta * 12.0, 1.0))
 	_animation_phase += delta * animation_speed
 	visual_pivot.scale = Vector2(1.0, 1.0 + sin(_animation_phase) * _squash_amount)
-	visual_pivot.rotation = sin(_animation_phase * 0.82) * _rotation_amount
+	visual_pivot.rotation = sin(_animation_phase * 0.82) * _rotation_amount + _hit_rotation_offset
 
 
 func _draw() -> void:

@@ -21,10 +21,20 @@ extends Node
 @onready var skill_rows: VBoxContainer = $UI/SkillPanel/Margin/VBox/SkillRows
 @onready var offline_panel: PanelContainer = $UI/OfflinePanel
 @onready var offline_label: Label = $UI/OfflinePanel/Margin/VBox/Reward
+@onready var settings_button: Button = $UI/SettingsButton
+@onready var settings_panel: PanelContainer = $UI/SettingsPanel
+@onready var bgm_slider: HSlider = $UI/SettingsPanel/Margin/VBox/BGMSlider
+@onready var sfx_slider: HSlider = $UI/SettingsPanel/Margin/VBox/SFXSlider
+@onready var bgm_value_label: Label = $UI/SettingsPanel/Margin/VBox/BGMValue
+@onready var sfx_value_label: Label = $UI/SettingsPanel/Margin/VBox/SFXValue
+@onready var delete_data_button: Button = $UI/SettingsPanel/Margin/VBox/DeleteData
+@onready var delete_data_confirmation: ConfirmationDialog = $UI/DeleteDataConfirmation
+@onready var stage_background: Sprite2D = $World/Camera2D/Background
 @onready var gold_effects: Node2D = $GoldEffects/Coins
 @onready var stage_transition_overlay: ColorRect = $StageTransition/Overlay
 @onready var boss_atmosphere_overlay: ColorRect = $BossAtmosphere/Overlay
 @onready var party_speech_bubble: Control = $World/PartySpeechBubble
+@onready var game_audio: Node = $GameAudio
 var event_log_entries: VBoxContainer
 
 const FORMATION_OFFSETS := [Vector2.ZERO, Vector2(-60.0, -42.0), Vector2(-112.0, 38.0)]
@@ -45,12 +55,19 @@ var _healing_skill_cooldown_remaining: float = 0.0
 var _boss_text_effect: HBoxContainer
 var _boss_text_tweens: Array[Tween] = []
 var _boss_progress_active: bool = false
+var _boss_progress_pulse_tween: Tween
+var _previous_boss_progress_value: float = -1.0
 var _message_text_effect: HBoxContainer
 var _message_text_tweens: Array[Tween] = []
 var _auto_revive_active: bool = false
 
 
 func _ready() -> void:
+	game_audio.set_bgm_volume(GameState.bgm_volume_db)
+	game_audio.set_sfx_volume(GameState.sfx_volume_db)
+	bgm_slider.set_value_no_signal(GameState.bgm_volume_db)
+	sfx_slider.set_value_no_signal(GameState.sfx_volume_db)
+	_update_audio_setting_labels()
 	_create_event_log()
 	_create_party()
 	stage_manager.enemy_scene = enemy_scene
@@ -62,6 +79,8 @@ func _ready() -> void:
 	stage_manager.boss_warning.connect(_on_boss_battle_started)
 	stage_manager.boss_battle_ended.connect(_on_boss_battle_ended)
 	stage_manager.boss_attacked.connect(_on_boss_attacked)
+	stage_manager.enemy_attacked.connect(game_audio.play_enemy_attack)
+	stage_manager.enemy_defeated_audio.connect(game_audio.play_enemy_defeated)
 	stage_manager.gold_dropped.connect(_on_gold_dropped)
 	stage_manager.reward_logged.connect(_on_reward_logged)
 	stage_manager.stage_transition_requested.connect(_on_stage_transition_requested)
@@ -77,9 +96,28 @@ func _ready() -> void:
 	GameState.account_skills_changed.connect(_on_account_skills_changed)
 	character_button.pressed.connect(_open_character_panel)
 	skill_button.pressed.connect(_open_skill_panel)
+	settings_button.pressed.connect(_open_settings_panel)
 	$UI/CharacterPanel/Margin/VBox/Close.pressed.connect(character_panel.hide)
 	$UI/SkillPanel/Margin/VBox/Close.pressed.connect(skill_panel.hide)
 	$UI/OfflinePanel/Margin/VBox/Close.pressed.connect(offline_panel.hide)
+	$UI/SettingsPanel/Margin/VBox/Close.pressed.connect(settings_panel.hide)
+	bgm_slider.value_changed.connect(_on_bgm_volume_changed)
+	sfx_slider.value_changed.connect(_on_sfx_volume_changed)
+	bgm_slider.drag_ended.connect(_on_audio_slider_drag_ended)
+	sfx_slider.drag_ended.connect(_on_audio_slider_drag_ended)
+	delete_data_button.pressed.connect(_on_delete_data_requested)
+	delete_data_confirmation.confirmed.connect(_delete_data_and_restart)
+	for ui_button: Button in [
+		character_button,
+		skill_button,
+		settings_button,
+		$UI/CharacterPanel/Margin/VBox/Close,
+		$UI/SkillPanel/Margin/VBox/Close,
+		$UI/OfflinePanel/Margin/VBox/Close,
+		$UI/SettingsPanel/Margin/VBox/Close,
+		delete_data_button,
+	]:
+		ui_button.pressed.connect(game_audio.play_ui)
 	_refresh_resources()
 	_on_stage_changed(stage_manager.current_stage)
 	_on_progress_changed(0, stage_manager.enemies_before_boss, false)
@@ -161,8 +199,8 @@ func _spawn_character(character_index: int) -> void:
 	dog.global_position = spawn_origin + FORMATION_OFFSETS[character_index]
 	dog.apply_progression(GameState.player_level, GameState.character_levels[character_index])
 	dog.apply_defense_bonus(GameState.defense_skill_total_percent())
-	dog.attack_visual.connect(world.add_combat_line)
-	dog.skill_visual.connect(world.add_combat_line)
+	dog.attack_visual.connect(_on_dog_attack_visual)
+	dog.skill_visual.connect(_on_dog_skill_visual)
 	party.append(dog)
 	party_by_index[character_index] = dog
 	if character_index == 0:
@@ -170,6 +208,16 @@ func _spawn_character(character_index: int) -> void:
 		dog.leader = null
 	if _stage_manager_ready:
 		stage_manager.add_party_member(dog)
+
+
+func _on_dog_attack_visual(from: Vector2, to: Vector2, color: Color) -> void:
+	world.add_combat_line(from, to, color)
+	game_audio.play_attack()
+
+
+func _on_dog_skill_visual(from: Vector2, to: Vector2, color: Color) -> void:
+	world.add_combat_line(from, to, color)
+	game_audio.play_skill()
 
 
 func _refresh_resources() -> void:
@@ -186,6 +234,7 @@ func _refresh_resources() -> void:
 func _on_stage_changed(stage_number: int) -> void:
 	var area := ((stage_number - 1) / 10) + 1
 	var local_stage := ((stage_number - 1) % 10) + 1
+	stage_background.set_stage(stage_number)
 	stage_label.text = "버려진 주택가  %d-%d" % [area, local_stage]
 	for character_index in party_by_index:
 		var dog: DogActor = party_by_index[character_index]
@@ -194,7 +243,15 @@ func _on_stage_changed(stage_number: int) -> void:
 
 func _on_progress_changed(kills: int, required: int, boss_active: bool) -> void:
 	progress_bar.max_value = required
-	progress_bar.value = required if boss_active else kills
+	var next_progress_value := float(required if boss_active else kills)
+	var progress_increased := (
+		_previous_boss_progress_value >= 0.0
+		and next_progress_value > _previous_boss_progress_value
+	)
+	progress_bar.value = next_progress_value
+	_previous_boss_progress_value = next_progress_value
+	if progress_increased:
+		_play_boss_progress_pulse()
 	if boss_active:
 		progress_label.hide()
 		if not _boss_progress_active:
@@ -204,6 +261,33 @@ func _on_progress_changed(kills: int, required: int, boss_active: bool) -> void:
 		progress_label.text = "보스 출현까지  %d / %d" % [kills, required]
 		progress_label.show()
 	_boss_progress_active = boss_active
+
+
+func _play_boss_progress_pulse() -> void:
+	if _boss_progress_pulse_tween:
+		_boss_progress_pulse_tween.kill()
+	progress_bar.pivot_offset = progress_bar.size * 0.5
+	progress_bar.scale = Vector2.ONE
+	_boss_progress_pulse_tween = create_tween()
+	_boss_progress_pulse_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_boss_progress_pulse_tween.tween_property(
+		progress_bar,
+		"scale",
+		Vector2(1.045, 1.13),
+		0.11
+	).set_trans(Tween.TRANS_BACK)
+	_boss_progress_pulse_tween.tween_property(
+		progress_bar,
+		"scale",
+		Vector2(0.99, 0.965),
+		0.09
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_boss_progress_pulse_tween.tween_property(
+		progress_bar,
+		"scale",
+		Vector2.ONE,
+		0.2
+	).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 
 
 func _play_boss_progress_text() -> void:
@@ -304,6 +388,7 @@ func _on_party_defeated() -> void:
 		"원정대 전멸 · 골드 30%% 감소 (-%sG)" % GameState.format_large_number(penalty),
 		Color("#ff8d8d")
 	)
+	game_audio.play_revive()
 	await _play_screen_transition(stage_manager.restart_after_revival)
 	party_speech_bubble.show_normal(true)
 	_auto_revive_active = false
@@ -318,6 +403,8 @@ func _on_boss_defeated_dialogue() -> void:
 
 
 func _on_boss_battle_started() -> void:
+	game_audio.enter_boss_music()
+	game_audio.play_boss_warning()
 	party_speech_bubble.show_boss_arrived()
 	if _camera_zoom_tween:
 		_camera_zoom_tween.kill()
@@ -340,6 +427,7 @@ func _on_boss_battle_started() -> void:
 
 
 func _on_boss_battle_ended() -> void:
+	game_audio.exit_boss_music()
 	_camera_trauma = 0.0
 	if _camera_zoom_tween:
 		_camera_zoom_tween.kill()
@@ -404,6 +492,7 @@ func _play_screen_transition(midpoint_action: Callable) -> void:
 
 
 func _on_gold_dropped(world_position: Vector2, amount: int, is_boss_drop: bool) -> void:
+	game_audio.play_coin(is_boss_drop)
 	var start_position := _world_to_gold_effects_position(world_position)
 	var coin_count := 8 if is_boss_drop else 4
 	for index in coin_count:
@@ -547,8 +636,53 @@ func _update_party_speech_bubble_position() -> void:
 	)
 
 
+func _open_settings_panel() -> void:
+	character_panel.hide()
+	skill_panel.hide()
+	offline_panel.hide()
+	settings_panel.show()
+
+
+func _on_bgm_volume_changed(value: float) -> void:
+	GameState.bgm_volume_db = value
+	game_audio.set_bgm_volume(value)
+	_update_audio_setting_labels()
+
+
+func _on_sfx_volume_changed(value: float) -> void:
+	GameState.sfx_volume_db = value
+	game_audio.set_sfx_volume(value)
+	_update_audio_setting_labels()
+
+
+func _on_audio_slider_drag_ended(_value_changed: bool) -> void:
+	GameState.save_game()
+
+
+func _update_audio_setting_labels() -> void:
+	bgm_value_label.text = "BGM  %d dB" % int(round(GameState.bgm_volume_db))
+	sfx_value_label.text = "FX 사운드  %d dB" % int(round(GameState.sfx_volume_db))
+
+
+func _on_delete_data_requested() -> void:
+	delete_data_confirmation.popup_centered()
+
+
+func _delete_data_and_restart() -> void:
+	delete_data_button.disabled = true
+	if not GameState.delete_save_data():
+		delete_data_button.disabled = false
+		_show_message("저장 데이터를 삭제하지 못했습니다.")
+		return
+	await get_tree().process_frame
+	var reload_error := get_tree().reload_current_scene()
+	if reload_error != OK:
+		get_tree().quit()
+
+
 func _open_character_panel() -> void:
 	skill_panel.hide()
+	settings_panel.hide()
 	_rebuild_character_rows()
 	character_panel.show()
 
@@ -646,6 +780,7 @@ func _character_combat_values(definition: ActorDefinition, character_level: int)
 
 
 func _on_character_action(character_index: int) -> void:
+	game_audio.play_ui()
 	var definition := actor_catalog.character_at(character_index)
 	if definition == null:
 		return
@@ -680,6 +815,7 @@ func _on_character_roster_changed(character_index: int) -> void:
 
 func _open_skill_panel() -> void:
 	character_panel.hide()
+	settings_panel.hide()
 	_rebuild_skill_rows()
 	skill_panel.show()
 
@@ -742,6 +878,7 @@ func _rebuild_skill_rows() -> void:
 
 
 func _on_skill_upgrade(skill_index: int) -> void:
+	game_audio.play_ui()
 	if not GameState.upgrade_account_skill(skill_index):
 		return
 	var skill_names := ["골드 증가", "긴급 체력 회복", "방어력 증가"]
@@ -855,6 +992,7 @@ func _stop_message_text_effect() -> void:
 
 
 func _show_offline_reward(reward: Dictionary) -> void:
+	settings_panel.hide()
 	var hours := float(reward.get("seconds", 0)) / 3600.0
 	offline_label.text = "%.1f시간 원정 보상\n골드 +%s  EXP +%d" % [
 		hours,

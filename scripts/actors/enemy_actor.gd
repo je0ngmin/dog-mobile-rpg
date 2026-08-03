@@ -23,6 +23,8 @@ var _squash_amount: float = 0.0
 var _rotation_amount: float = 0.0
 var _health_bar_width: float = 55.0
 var _health_bar_y: float = -86.0
+var _hit_rotation_offset: float = 0.0
+var _hit_visual_tween: Tween
 
 
 func _ready() -> void:
@@ -133,8 +135,43 @@ func _on_attack(hit_target: Node, _damage: float) -> void:
 	attack_visual.emit(global_position, (hit_target as Node2D).global_position, Color("#ff6b6b"))
 
 
-func _on_damaged(amount: float) -> void:
+func _on_damaged(amount: float, source: Node2D) -> void:
+	if health.current_health > 0.0:
+		_play_hit_reaction(source)
 	damage_received.emit(global_position, amount, is_boss)
+
+
+func _play_hit_reaction(source: Node2D) -> void:
+	if _hit_visual_tween:
+		_hit_visual_tween.kill()
+	var away_direction := 1.0
+	if is_instance_valid(source):
+		away_direction = signf(global_position.x - source.global_position.x)
+		if is_zero_approx(away_direction):
+			away_direction = 1.0
+	var impact_rotation := away_direction * (0.12 if is_boss else 0.2)
+	_hit_rotation_offset = impact_rotation
+	enemy_sprite.modulate = Color(1.0, 0.22, 0.22, 1.0)
+	_hit_visual_tween = create_tween()
+	_hit_visual_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_hit_visual_tween.tween_method(
+		func(value: float) -> void: _hit_rotation_offset = value,
+		impact_rotation,
+		-impact_rotation * 0.2,
+		0.1
+	)
+	_hit_visual_tween.tween_method(
+		func(value: float) -> void: _hit_rotation_offset = value,
+		-impact_rotation * 0.2,
+		0.0,
+		0.16
+	).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_hit_visual_tween.parallel().tween_property(
+		enemy_sprite,
+		"modulate",
+		Color.WHITE,
+		0.2
+	)
 
 
 func _on_health_changed(_current: float, _maximum: float) -> void:
@@ -165,7 +202,7 @@ func _update_sprite_motion(delta: float, is_moving: bool, is_attacking: bool) ->
 	_rotation_amount = lerpf(_rotation_amount, target_rotation, minf(delta * 13.0, 1.0))
 	_animation_phase += delta * animation_speed
 	visual_pivot.scale = Vector2(1.0, 1.0 + sin(_animation_phase) * _squash_amount)
-	visual_pivot.rotation = sin(_animation_phase * 0.84) * _rotation_amount
+	visual_pivot.rotation = sin(_animation_phase * 0.84) * _rotation_amount + _hit_rotation_offset
 
 
 func _draw() -> void:

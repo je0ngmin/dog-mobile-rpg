@@ -6,6 +6,8 @@ signal progress_changed(kills: int, required: int, boss_active: bool)
 signal boss_warning
 signal boss_battle_ended
 signal boss_attacked
+signal enemy_attacked(boss_attack: bool)
+signal enemy_defeated_audio(boss_defeat: bool)
 signal gold_dropped(world_position: Vector2, amount: int, is_boss_drop: bool)
 signal reward_logged(gold_amount: int, experience_amount: int, skill_bonus_gold: int)
 signal stage_transition_requested(next_stage: int)
@@ -131,6 +133,7 @@ func _spawn_enemy(as_boss: bool) -> void:
 
 func _on_enemy_defeated(enemy: EnemyActor, loot: Dictionary) -> void:
 	var defeated_position := enemy.global_position
+	enemy_defeated_audio.emit(enemy.is_boss)
 	GameState.add_loot(loot)
 	gold_dropped.emit(defeated_position, int(loot.get("gold", 0)), enemy.is_boss)
 	reward_logged.emit(
@@ -197,6 +200,7 @@ func _clear_enemies() -> void:
 func _relay_attack_visual(from: Vector2, to: Vector2, color: Color, from_boss: bool = false) -> void:
 	if _world.has_method("add_combat_line"):
 		_world.call("add_combat_line", from, to, color)
+	enemy_attacked.emit(from_boss)
 	if from_boss:
 		boss_attacked.emit()
 

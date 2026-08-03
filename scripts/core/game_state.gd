@@ -10,6 +10,8 @@ const SAVE_PATH := "user://dog_rpg_save.json"
 const OFFLINE_CAP_SECONDS := 8 * 60 * 60
 const MAX_GOLD := 8_000_000_000_000_000_000
 const LARGE_NUMBER_UNITS := ["", "만", "억", "조", "경"]
+const DEFAULT_BGM_VOLUME_DB := -8.0
+const DEFAULT_SFX_VOLUME_DB := -5.0
 
 var gold: int = 0
 var parts: int = 0
@@ -21,6 +23,8 @@ var pending_offline_reward: Dictionary = {}
 var character_purchased: Array[bool] = [true, false, false]
 var character_levels: Array[int] = [1, 1, 1]
 var account_skill_levels: Array[int] = [1, 1, 1]
+var bgm_volume_db: float = DEFAULT_BGM_VOLUME_DB
+var sfx_volume_db: float = DEFAULT_SFX_VOLUME_DB
 
 
 func _ready() -> void:
@@ -228,6 +232,8 @@ func save_game() -> void:
 		"character_purchased": character_purchased,
 		"character_levels": character_levels,
 		"account_skill_levels": account_skill_levels,
+		"bgm_volume_db": bgm_volume_db,
+		"sfx_volume_db": sfx_volume_db,
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
@@ -251,6 +257,8 @@ func load_game() -> void:
 	experience = int(data.get("experience", 0))
 	highest_stage = int(data.get("highest_stage", 1))
 	last_saved_unix = int(data.get("last_saved_unix", Time.get_unix_time_from_system()))
+	bgm_volume_db = clampf(float(data.get("bgm_volume_db", DEFAULT_BGM_VOLUME_DB)), -40.0, 0.0)
+	sfx_volume_db = clampf(float(data.get("sfx_volume_db", DEFAULT_SFX_VOLUME_DB)), -40.0, 0.0)
 	var saved_purchased: Array = data.get("character_purchased", [true, false, false])
 	var saved_levels: Array = data.get("character_levels", [1, 1, 1])
 	for index in character_purchased.size():
@@ -299,5 +307,15 @@ func reset_progress() -> void:
 	character_purchased = [true, false, false]
 	character_levels = [1, 1, 1]
 	account_skill_levels = [1, 1, 1]
+	bgm_volume_db = DEFAULT_BGM_VOLUME_DB
+	sfx_volume_db = DEFAULT_SFX_VOLUME_DB
 	save_game()
 	resources_changed.emit()
+
+
+func delete_save_data() -> bool:
+	reset_progress()
+	var absolute_save_path := ProjectSettings.globalize_path(SAVE_PATH)
+	if not FileAccess.file_exists(SAVE_PATH):
+		return true
+	return DirAccess.remove_absolute(absolute_save_path) == OK

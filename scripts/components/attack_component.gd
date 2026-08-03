@@ -28,7 +28,7 @@ func try_attack(attacker: Node2D, target: Node2D) -> bool:
 	var health := target.get_node_or_null("HealthComponent") as HealthComponent
 	if health == null or health.is_dead:
 		return false
-	health.take_damage(damage)
+	health.take_damage(damage, attacker)
 	_cooldown = 1.0 / maxf(attacks_per_second, 0.05)
 	attack_performed.emit(target, damage)
 	return true
