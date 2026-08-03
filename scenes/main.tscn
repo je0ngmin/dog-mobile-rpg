@@ -370,7 +370,8 @@ theme_override_styles/pressed = SubResource("StyleMenuButtonPressed")
 theme_override_styles/hover = SubResource("StyleMenuButtonHover")
 text = "설정"
 
-[node name="DebugStageButton" type="Button" parent="UI"]
+[node name="DebugStageButton" type="Button" parent="UI" unique_id=1278998982]
+visible = false
 z_index = 5
 anchors_preset = 1
 anchor_left = 1.0
@@ -472,19 +473,17 @@ dialog_text = "모든 진행 데이터가 영구적으로 삭제됩니다.
 정말 삭제할까요?"
 cancel_button_text = "취소"
 
-[node name="GameClearOverlay" type="ColorRect" parent="UI"]
+[node name="GameClearOverlay" type="ColorRect" parent="UI" unique_id=181406630]
 visible = false
 z_index = 80
-layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
 color = Color(0.015, 0.025, 0.03, 0.82)
 
-[node name="ClearPanel" type="PanelContainer" parent="UI/GameClearOverlay"]
+[node name="ClearPanel" type="PanelContainer" parent="UI/GameClearOverlay" unique_id=115668313]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -499,40 +498,41 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StylePanel")
 
-[node name="Margin" type="MarginContainer" parent="UI/GameClearOverlay/ClearPanel"]
+[node name="Margin" type="MarginContainer" parent="UI/GameClearOverlay/ClearPanel" unique_id=1226084766]
 layout_mode = 2
 theme_override_constants/margin_left = 42
 theme_override_constants/margin_top = 34
 theme_override_constants/margin_right = 42
 theme_override_constants/margin_bottom = 34
 
-[node name="VBox" type="VBoxContainer" parent="UI/GameClearOverlay/ClearPanel/Margin"]
+[node name="VBox" type="VBoxContainer" parent="UI/GameClearOverlay/ClearPanel/Margin" unique_id=1235080777]
 layout_mode = 2
 theme_override_constants/separation = 18
 
-[node name="Title" type="Label" parent="UI/GameClearOverlay/ClearPanel/Margin/VBox"]
+[node name="Title" type="Label" parent="UI/GameClearOverlay/ClearPanel/Margin/VBox" unique_id=281780400]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.82, 0.3, 1)
 theme_override_font_sizes/font_size = 38
 text = "게임 클리어!"
 horizontal_alignment = 1
 
-[node name="Stage" type="Label" parent="UI/GameClearOverlay/ClearPanel/Margin/VBox"]
+[node name="Stage" type="Label" parent="UI/GameClearOverlay/ClearPanel/Margin/VBox" unique_id=1083773378]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.94, 1, 1)
 theme_override_font_sizes/font_size = 23
 text = "스테이지 3-5 최종 보스 격파"
 horizontal_alignment = 1
 
-[node name="Description" type="Label" parent="UI/GameClearOverlay/ClearPanel/Margin/VBox"]
+[node name="Description" type="Label" parent="UI/GameClearOverlay/ClearPanel/Margin/VBox" unique_id=1833062527]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 18
-text = "모든 지역을 정복했습니다!\n강아지 원정대가 새로운 희망을 찾았습니다."
+text = "모든 지역을 정복했습니다!
+강아지 원정대가 새로운 희망을 찾았습니다."
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Replay" type="Button" parent="UI/GameClearOverlay/ClearPanel/Margin/VBox"]
+[node name="Replay" type="Button" parent="UI/GameClearOverlay/ClearPanel/Margin/VBox" unique_id=269260034]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 theme_override_font_sizes/font_size = 19

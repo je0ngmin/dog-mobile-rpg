@@ -66,7 +66,6 @@ var _auto_revive_active: bool = false
 
 
 func _ready() -> void:
-	debug_stage_button.visible = OS.is_debug_build()
 	game_audio.set_bgm_volume(GameState.bgm_volume_db)
 	game_audio.set_sfx_volume(GameState.sfx_volume_db)
 	bgm_slider.set_value_no_signal(GameState.bgm_volume_db)
