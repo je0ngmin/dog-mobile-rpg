@@ -15,7 +15,7 @@
  * **폰트**
     * Asta Sans
  * **스크립트:**
-    * https://github.com/josephrocca/clip-image-sorter/blob/main/enable-threads.js (Godot Engine에서 웹 플랫폼으로 스레드 활성화 후 빌드한 다음 Github Pages에 호스팅할 시 서버에서 COOP와 COEP 헤더를 지원하지 않아 게임을 실행할 수 없는 문제가 있어 해당 js 스크립트를 통해 cross-origin-isolates를 활성화해 WebAssembly, SharedArrayBuffer를 사용할 수 있도록 했습니다.)
+    * https://github.com/gzuidhof/coi-serviceworker (Godot Engine에서 웹 플랫폼으로 Wasm 스레드를 활성화한 후 빌드한 다음 Github Pages에 호스팅할 시 서버에서 COOP와 COEP 헤더를 지원하지 않아 게임을 실행할 수 없는 문제가 있어 해당 js 스크립트를 통해 service worker를 통해 Cross-origin isolation를 활성화해 SharedArrayBuffer를 사용할 수 있도록 했습니다.)
 
 ## 사용한 AI
   * ChatGPT (기획, 이미지 생성)
