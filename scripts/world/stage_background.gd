@@ -2,9 +2,9 @@ class_name StageBackground
 extends Sprite2D
 
 const AREA_BACKGROUND_PATHS := [
-	"res://sprites/backgrounds/BG001.jpg",
-	"res://sprites/backgrounds/BG002.jpg",
-	"res://sprites/backgrounds/BG003.jpg",
+	"res://sprites/backgrounds/BG001.png",
+	"res://sprites/backgrounds/BG002.png",
+	"res://sprites/backgrounds/BG003.png",
 ]
 
 @export_range(1, 100, 1) var stages_per_area: int = 10

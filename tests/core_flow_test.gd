@@ -60,18 +60,18 @@ func _ready() -> void:
 	main.settings_panel.hide()
 	main._on_stage_changed(1)
 	_check(
-		main.stage_background.texture.resource_path.ends_with("BG001.jpg"),
-		"1-n 스테이지에는 BG001.jpg를 사용해야 합니다."
+		main.stage_background.texture.resource_path.ends_with("BG001.png"),
+		"1-n 스테이지에는 BG001.png를 사용해야 합니다."
 	)
 	main._on_stage_changed(11)
 	_check(
-		main.stage_background.texture.resource_path.ends_with("BG002.jpg"),
-		"2-n 스테이지에는 BG002.jpg를 사용해야 합니다."
+		main.stage_background.texture.resource_path.ends_with("BG002.png"),
+		"2-n 스테이지에는 BG002.png를 사용해야 합니다."
 	)
 	main._on_stage_changed(21)
 	_check(
-		main.stage_background.texture.resource_path.ends_with("BG003.jpg"),
-		"3-n 스테이지에는 BG003.jpg를 사용해야 합니다."
+		main.stage_background.texture.resource_path.ends_with("BG003.png"),
+		"3-n 스테이지에는 BG003.png를 사용해야 합니다."
 	)
 	main._on_stage_changed(1)
 	_check(main.actor_catalog != null, "캐릭터·몬스터·보스 카탈로그가 Main에 연결되어야 합니다.")

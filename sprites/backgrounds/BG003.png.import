@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bavqdirowtm5o"
-path.s3tc="res://.godot/imported/BG001.jpg-70e6df909eda9d1b4ba54d192c5dd941.s3tc.ctex"
+uid="uid://comenoenpbpgs"
+path.s3tc="res://.godot/imported/BG003.png-f7a947d0f263ffa8057c7850d4a0e91c.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://sprites/backgrounds/BG001.jpg"
-dest_files=["res://.godot/imported/BG001.jpg-70e6df909eda9d1b4ba54d192c5dd941.s3tc.ctex"]
+source_file="res://sprites/backgrounds/BG003.png"
+dest_files=["res://.godot/imported/BG003.png-f7a947d0f263ffa8057c7850d4a0e91c.s3tc.ctex"]
 
 [params]
 
@@ -21,12 +21,12 @@ compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
-compress/hdr_compression=1
-compress/normal_map=0
-compress/channel_pack=0
+compress/hdr_compression=0
+compress/normal_map=2
+compress/channel_pack=1
 mipmaps/generate=false
 mipmaps/limit=-1
-roughness/mode=0
+roughness/mode=1
 roughness/src_normal=""
 process/channel_remap/red=0
 process/channel_remap/green=1
