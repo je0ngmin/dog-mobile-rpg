@@ -74,6 +74,21 @@ func _ready() -> void:
 		"3-n 스테이지에는 BG003.png를 사용해야 합니다."
 	)
 	main._on_stage_changed(1)
+	_check(
+		GameState.account_level_stat_multiplier(10) > 1.3,
+		"원정대 레벨업은 기존 선형 성장보다 체력과 공격력이 확실히 상승해야 합니다."
+	)
+	_check(
+		is_equal_approx(
+			GameState.account_level_stat_multiplier(22) / GameState.account_level_stat_multiplier(21),
+			1.02
+		)
+		and is_equal_approx(
+			GameState.account_level_stat_multiplier(52) / GameState.account_level_stat_multiplier(51),
+			1.01
+		),
+		"원정대 레벨 성장률은 중후반으로 갈수록 완만해져야 합니다."
+	)
 	_check(main.actor_catalog != null, "캐릭터·몬스터·보스 카탈로그가 Main에 연결되어야 합니다.")
 	_check(main.actor_catalog.characters.size() == 3, "플레이어 캐릭터 3종이 Resource로 등록되어야 합니다.")
 	_check(main.actor_catalog.normal_enemies.size() == 2, "일반 몬스터 2종이 Resource로 등록되어야 합니다.")
@@ -134,6 +149,7 @@ func _ready() -> void:
 		and resource_enemy.definition.base_attack >= 4_000.0,
 		"몬스터 체력과 공격력도 확대된 전투 수치를 사용해야 합니다."
 	)
+	_check(resource_enemy.move_speed >= 280.0, "일반 몬스터는 화면에서 더 빠르게 접근해야 합니다.")
 	_check(damage_events.size() == 1 and is_equal_approx(damage_events[0], 12.0), "몬스터 피격 시 데미지 표시 신호가 발생해야 합니다.")
 	_check(
 		resource_enemy.enemy_sprite.modulate.g < 0.5
@@ -153,6 +169,7 @@ func _ready() -> void:
 		and resource_enemy.display_name == "화염 까마귀",
 		"보스가 스테이지별 ActorDefinition을 사용해야 합니다."
 	)
+	_check(resource_enemy.move_speed >= 190.0, "보스도 이전보다 빠르게 전장에 진입해야 합니다.")
 	var enemy_loot_events: Array[Dictionary] = []
 	resource_enemy.defeated.connect(
 		func(_enemy: EnemyActor, loot: Dictionary) -> void:

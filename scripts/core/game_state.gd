@@ -36,6 +36,22 @@ func experience_to_next_level() -> int:
 	return 40 + (player_level - 1) * 25
 
 
+func account_level_stat_multiplier(level: int) -> float:
+	var upgrade_steps := maxi(level - 1, 0)
+	var early_steps := mini(upgrade_steps, 20)
+	var middle_steps := mini(maxi(upgrade_steps - 20, 0), 30)
+	var late_steps := maxi(upgrade_steps - 50, 0)
+	return pow(1.03, early_steps) * pow(1.02, middle_steps) * pow(1.01, late_steps)
+
+
+func account_level_gain_percent(level: int) -> float:
+	if level <= 21:
+		return 3.0
+	if level <= 51:
+		return 2.0
+	return 1.0
+
+
 func add_experience(amount: int) -> void:
 	experience += maxi(amount, 0)
 	while experience >= experience_to_next_level():
@@ -70,7 +86,7 @@ func character_upgrade_cost(character_index: int) -> int:
 	if character_index < 0 or character_index >= character_levels.size():
 		return 0
 	var base_costs := [500_000, 650_000, 800_000]
-	var cost := float(base_costs[character_index]) * pow(1.55, character_levels[character_index] - 1)
+	var cost := float(base_costs[character_index]) * pow(1.34, character_levels[character_index] - 1)
 	cost = minf(cost, float(MAX_GOLD))
 	return int(round(cost))
 

@@ -259,6 +259,7 @@ vertical_alignment = 1
 custom_minimum_size = Vector2(310, 0)
 layout_mode = 2
 theme_override_constants/separation = 8
+accessibility_region = true
 
 [node name="Badge" type="TextureRect" parent="UI/TopBar/Margin/VBox/LevelContainer" unique_id=2115877812]
 custom_minimum_size = Vector2(72, 48)

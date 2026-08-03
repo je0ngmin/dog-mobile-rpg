@@ -373,8 +373,12 @@ func _on_account_level_changed(new_level: int) -> void:
 	for character_index in party_by_index:
 		var dog: DogActor = party_by_index[character_index]
 		dog.apply_progression(new_level, GameState.character_levels[character_index])
-	_show_message("원정대 레벨 %d 달성! 능력치가 상승했습니다." % new_level)
-	_add_event_log("원정대 Lv.%d 달성 · 전체 능력치 상승" % new_level, Color("#7de7ff"))
+	var gain_percent := GameState.account_level_gain_percent(new_level)
+	_show_message("원정대 레벨 %d! 전체 체력·공격력 +%.1f%%" % [new_level, gain_percent])
+	_add_event_log(
+		"원정대 Lv.%d 달성 · 전체 체력·공격력 +%.1f%%" % [new_level, gain_percent],
+		Color("#7de7ff")
+	)
 
 
 func _on_party_defeated() -> void:
@@ -764,7 +768,7 @@ func _rebuild_character_rows() -> void:
 
 
 func _character_combat_values(definition: ActorDefinition, character_level: int) -> Vector2:
-	var account_multiplier := 1.0 + float(GameState.player_level - 1) * 0.02
+	var account_multiplier := GameState.account_level_stat_multiplier(GameState.player_level)
 	var upgrade_count := maxi(character_level - 1, 0)
 	var health := (
 		definition.base_health

@@ -96,7 +96,7 @@ func _apply_definition_visual() -> void:
 
 func apply_progression(account_level: int, upgrade_level: int) -> void:
 	character_level = maxi(upgrade_level, 1)
-	var multiplier := 1.0 + float(account_level - 1) * 0.02
+	var multiplier := GameState.account_level_stat_multiplier(account_level)
 	_apply_role_stats(multiplier, character_level, true)
 
 
